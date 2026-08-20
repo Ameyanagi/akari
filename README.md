@@ -48,8 +48,9 @@ def main() raises:
 An `RGBA` value does not imply a transfer function. Interpolation operates in
 the stored numeric space; future RGB and perceptual color-space types will make
 other interpolation semantics explicit. Because Mojo 1.0 struct fields remain
-externally mutable, accessors and semantic operations revalidate current storage
-and raise instead of returning an invalid color.
+externally mutable, direct mutation of underscore-prefixed storage is out of
+contract. Construction validates components, accessors then trust stored state,
+and `validate()` provides an explicit checkpoint after unusual low-level work.
 
 Future 8-bit import/export is governed by the
 [numeric conversion policy](docs/numeric-conversion.md): quantization is strict,

@@ -40,9 +40,10 @@ wider integer must reject values outside `[0, 255]`; it must not clamp or wrap.
 
 ## Export to 8-bit storage
 
-Before export, revalidate the complete semantic color value. NaN, either
-infinity, and components outside `[0, 1]` raise an error, including invalid state
-introduced through externally mutable Mojo 1.0 struct storage.
+Export trusts the constructor-established invariant and does not revalidate the
+complete color value. Callers that perform unusual direct mutation of
+underscore-prefixed Mojo struct storage must call `validate()` explicitly before
+export. Invalid constructor inputs remain rejected.
 
 For each integer `n` in `[0, 254]`, define one normative binary64 threshold:
 
@@ -104,8 +105,10 @@ The implementation issue must add executable coverage for:
   `abs(x - RN64(export(x) / 255)) <= 1 / 510`;
 - endpoints and, for every `n` in `[0, 254]`, `down / T[n] / up` exporting as
   `n / (n + 1) / (n + 1)`;
-- rejection of NaN, positive/negative infinity, and out-of-range components;
-- rejection after direct mutation of every reachable component; and
+- constructor rejection of NaN, positive/negative infinity, and out-of-range
+  components;
+- explicit `validate()` rejection after direct mutation of every reachable
+  component; and
 - identical numeric treatment of alpha without a color transfer function.
 
 ## Non-goals

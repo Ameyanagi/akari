@@ -9,8 +9,9 @@ documentation land together.
 ### A0 — Numeric color contract
 
 - [x] **A0.1 Normalized RGBA value:** validate finite components in `[0, 1]`,
-  revalidate every public observation/operation after reachable storage mutation,
-  and test constructor boundaries plus direct-mutation regressions.
+  trust constructor-established invariants during reads, expose an explicit
+  validation checkpoint, and test constructor boundaries plus direct-mutation
+  validation.
 - [x] **A0.2 Stored-space interpolation:** implement strict endpoint-bounded
   interpolation, including alpha, and test endpoints and a reference midpoint.
 - [x] **A0.3 Numeric conversion policy:** fix strict range validation,
