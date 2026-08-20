@@ -2,11 +2,69 @@
 
 from std.builtin.comparable import Equatable
 from std.io import Writable, Writer
+from std.memory import bitcast
+
+
+comptime _FLOAT64_FRACTION_MASK = UInt64(0x000F_FFFF_FFFF_FFFF)
+comptime _FLOAT64_EXPONENT_MASK = UInt64(0x7FF)
+comptime _FLOAT64_HIDDEN_BIT = UInt64(0x0010_0000_0000_0000)
 
 
 def _validate_channel(value: Float64, name: String) raises:
     if value != value or value < 0.0 or value > 1.0:
         raise Error(name + " must be finite and between zero and one")
+
+
+def _normalized_from_byte(value: UInt8) -> Float64:
+    """Normalize one stored byte by correctly rounded binary64 division."""
+    return Float64(value) / 255.0
+
+
+def _uint64_bit_length(value: UInt64) -> Int:
+    var cursor = value
+    var length = 0
+    while cursor != UInt64(0):
+        cursor >>= 1
+        length += 1
+    return length
+
+
+def _at_or_above_half_step(value: Float64, index: Int) -> Bool:
+    """Compare a valid binary64 value with ``(2 * index + 1) / 510`` exactly."""
+    var bits = bitcast[DType.uint64](value)
+    var raw_exponent = Int((bits >> 52) & _FLOAT64_EXPONENT_MASK)
+    var significand = bits & _FLOAT64_FRACTION_MASK
+    var exponent = -1074
+    if raw_exponent != 0:
+        significand |= _FLOAT64_HIDDEN_BIT
+        exponent = raw_exponent - 1075
+    if significand == UInt64(0):
+        return False
+
+    # For a validated component, exponent is negative. Compare
+    # 510 * significand with (2 * index + 1) * 2**(-exponent). Bit lengths
+    # reject unequal magnitudes before the only shift, keeping it in UInt64.
+    var scaled_significand = UInt64(510) * significand
+    var numerator = UInt64(2 * index + 1)
+    var shift = -exponent
+    var left_length = _uint64_bit_length(scaled_significand)
+    var right_length = _uint64_bit_length(numerator) + shift
+    if left_length != right_length:
+        return left_length > right_length
+    return scaled_significand >= (numerator << UInt64(shift))
+
+
+def _byte_from_normalized(value: Float64) -> UInt8:
+    """Quantize one trusted normalized component by exact half-step search."""
+    var lower = 0
+    var upper = 255
+    while lower < upper:
+        var middle = lower + (upper - lower) // 2
+        if _at_or_above_half_step(value, middle):
+            lower = middle + 1
+        else:
+            upper = middle
+    return UInt8(lower)
 
 
 struct _Validated:
@@ -51,6 +109,23 @@ struct RGBA(Copyable, Equatable, Writable):
         red: Float64, green: Float64, blue: Float64, alpha: Float64
     ) -> Self:
         return Self(red, green, blue, alpha, _validated=_Validated())
+
+    @staticmethod
+    def from_stored_bytes(
+        red: UInt8, green: UInt8, blue: UInt8, alpha: UInt8 = 255
+    ) -> Self:
+        """Import bytes using stored-space quantization and no transfer function.
+
+        Each byte normalizes as the correctly rounded ``value / 255`` and needs
+        no validation. See ``docs/numeric-conversion.md`` for the numeric
+        contract.
+        """
+        return Self._from_validated(
+            _normalized_from_byte(red),
+            _normalized_from_byte(green),
+            _normalized_from_byte(blue),
+            _normalized_from_byte(alpha),
+        )
 
     def __init__(
         out self,
@@ -108,6 +183,21 @@ struct RGBA(Copyable, Equatable, Writable):
 
     def alpha(self) -> Float64:
         return self._alpha
+
+    def stored_bytes(self) -> SIMD[DType.uint8, 4]:
+        """Export bytes using stored-space quantization and no transfer function.
+
+        Export trusts construction-established invariants and does not revalidate
+        or clamp. Callers who mutated underscore-prefixed fields directly must call
+        ``validate()`` before export. See ``docs/numeric-conversion.md`` for the
+        numeric contract.
+        """
+        return SIMD[DType.uint8, 4](
+            _byte_from_normalized(self._red),
+            _byte_from_normalized(self._green),
+            _byte_from_normalized(self._blue),
+            _byte_from_normalized(self._alpha),
+        )
 
     def lerp(self, other: Self, amount: Float64) raises -> Self:
         """Interpolate components, rejecting an amount outside ``[0, 1]``."""

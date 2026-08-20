@@ -32,10 +32,10 @@ procedure are committed. Consumers must not need the generator toolchain.
 
 ## Numeric conversion
 
-Future byte import/export follows the strict rounding, range, mutation, and
-color-space boundary in [the numeric conversion policy](numeric-conversion.md).
-Quantization never implies a transfer function, and clamping is never hidden
-inside a strict conversion.
+`RGBA.from_stored_bytes` and `RGBA.stored_bytes` implement the A0.3 strict
+rounding, range, mutation, and color-space boundary in [the numeric conversion
+policy](numeric-conversion.md). Quantization never implies a transfer function,
+and clamping is never hidden inside a strict conversion.
 
 ## Nominal color spaces
 
