@@ -37,6 +37,25 @@ color-space boundary in [the numeric conversion policy](numeric-conversion.md).
 Quantization never implies a transfer function, and clamping is never hidden
 inside a strict conversion.
 
+## Nominal color spaces
+
+Encoded sRGB, linear-light sRGB, HSL, and HSV are distinct nominal values. This
+keeps transfer functions and cylindrical-space conversions explicit at method
+boundaries, so a caller cannot accidentally substitute one space for another.
+`RGBA` remains transfer-function agnostic and retains the project's alpha
+semantics; the nominal RGB-family spaces have no alpha component.
+
+HSL and HSV hues are expressed in degrees. Construction rejects non-finite hue
+and circularly reduces every finite hue into `[0, 360)`. On RGB-to-cylindrical
+conversion, achromatic colors use hue `0` and saturation `0`. In the reverse
+direction, zero saturation ignores hue and produces the gray represented by
+lightness or value.
+
+The sRGB piecewise transfer functions use the standard IEC 61966-2-1 constants.
+Because the pinned Mojo toolchain evaluates `Float64` powers with roughly `1e-9`
+relative accuracy, the documented encode/decode round-trip tolerance is `1e-8`;
+cylindrical (HSL/HSV) round trips are algebraic and hold `1e-12`.
+
 ## Out of scope
 
 Rasterization, plotting, GUI widgets, terminal styling, image codecs, and full color-management systems are outside v0.1.

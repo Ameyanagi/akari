@@ -24,13 +24,13 @@ package smoke test exercise that public symbol.
 
 ### A1 — Explicit RGB-family spaces
 
-- [ ] **A1.1 sRGB value:** add a nominal sRGB type and define its transfer
+- [x] **A1.1 sRGB value:** add a nominal sRGB type and define its transfer
   function independently of `RGBA` storage.
-- [ ] **A1.2 HSL conversion:** add bidirectional sRGB/HSL conversion with
+- [x] **A1.2 HSL conversion:** add bidirectional sRGB/HSL conversion with
   achromatic and hue-wrap reference fixtures.
-- [ ] **A1.3 HSV conversion:** add bidirectional sRGB/HSV conversion with the
+- [x] **A1.3 HSV conversion:** add bidirectional sRGB/HSV conversion with the
   same boundary and round-trip coverage.
-- [ ] **A1.4 Conversion invariants:** property-test normalized ranges, primary
+- [x] **A1.4 Conversion invariants:** property-test normalized ranges, primary
   colors, grayscale, and round trips over a deterministic sample grid.
 
 Dependency gate: A1 begins after A0.3 fixes the numeric conversion policy. No
