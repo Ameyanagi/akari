@@ -1,1 +1,3 @@
-# Public exports will be added with the first implemented and tested API.
+"""Dependency-free color values for Mojo."""
+
+from .color import RGBA

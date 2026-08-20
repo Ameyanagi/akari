@@ -1,6 +1,6 @@
 # Akari
 
-> **Experimental — API not yet released.**
+> **Experimental — API may change before v1.0.**
 
 Color science, palettes, and scientific colormaps for Mojo.
 
@@ -34,8 +34,22 @@ The Mojo import is `akari`. The eventual Conda distribution is
 `mojo-akari`. Source lives under `src/akari/`, whose
 `__init__.mojo` defines the package boundary.
 
-The current scaffold includes only an internal smoke marker. Nothing is
-re-exported as a stable public API yet.
+The first public slice provides constructor-validated normalized `RGBA` values
+and explicit component-wise interpolation:
+
+```mojo
+from akari import RGBA
+
+def main() raises:
+    var middle = RGBA.black().lerp(RGBA(0.8, 0.9, 1.0), 0.5)
+    print(middle.red(), middle.green(), middle.blue(), middle.alpha())
+```
+
+An `RGBA` value does not imply a transfer function. Interpolation operates in
+the stored numeric space; future RGB and perceptual color-space types will make
+other interpolation semantics explicit. Because Mojo 1.0 struct fields remain
+externally mutable, accessors and semantic operations revalidate current storage
+and raise instead of returning an invalid color.
 
 ## Repository map
 

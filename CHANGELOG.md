@@ -8,3 +8,8 @@ and uses semantic versioning after the first public release.
 ### Added
 
 - Initial experimental repository scaffold.
+- Validated normalized `RGBA` values and component-wise interpolation.
+
+### Changed
+
+- Revalidate reachable mutable color storage before every semantic observation.
