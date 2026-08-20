@@ -51,6 +51,11 @@ other interpolation semantics explicit. Because Mojo 1.0 struct fields remain
 externally mutable, accessors and semantic operations revalidate current storage
 and raise instead of returning an invalid color.
 
+Future 8-bit import/export is governed by the
+[numeric conversion policy](docs/numeric-conversion.md): quantization is strict,
+never silently clamps, and never implies sRGB or another transfer function.
+The policy is complete, but no byte conversion API is released yet.
+
 ## Repository map
 
 - `src/akari/`: library or application source

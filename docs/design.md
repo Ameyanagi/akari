@@ -21,6 +21,13 @@ contracts and sparse dependencies. Generated tables are acceptable when their
 sources, Unicode or data version, licenses, checksums, and deterministic update
 procedure are committed. Consumers must not need the generator toolchain.
 
+## Numeric conversion
+
+Future byte import/export follows the strict rounding, range, mutation, and
+color-space boundary in [the numeric conversion policy](numeric-conversion.md).
+Quantization never implies a transfer function, and clamping is never hidden
+inside a strict conversion.
+
 ## Out of scope
 
 Rasterization, plotting, GUI widgets, terminal styling, image codecs, and full color-management systems are outside v0.1.

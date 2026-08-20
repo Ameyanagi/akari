@@ -9,6 +9,7 @@ and uses semantic versioning after the first public release.
 
 - Initial experimental repository scaffold.
 - Validated normalized `RGBA` values and component-wise interpolation.
+- Strict numeric conversion policy for future transfer-explicit 8-bit APIs.
 
 ### Changed
 

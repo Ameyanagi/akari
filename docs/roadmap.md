@@ -13,8 +13,10 @@ documentation land together.
   and test constructor boundaries plus direct-mutation regressions.
 - [x] **A0.2 Stored-space interpolation:** implement strict endpoint-bounded
   interpolation, including alpha, and test endpoints and a reference midpoint.
-- [ ] **A0.3 Numeric conversion policy:** document rounding and clamping rules
-  for future 8-bit import/export before adding those constructors.
+- [x] **A0.3 Numeric conversion policy:** fix strict range validation,
+  round-to-nearest with half steps toward the higher byte, normative fixtures,
+  and transfer-function boundaries for future 8-bit APIs in
+  `docs/numeric-conversion.md`; no constructor/exporter is added by this gate.
 
 Completion gate: the root exports only `RGBA`; `pixi run check` and the installed
 package smoke test exercise that public symbol.
