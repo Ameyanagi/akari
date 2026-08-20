@@ -32,3 +32,7 @@ selection stay at explicit effect or backend boundaries.
 Mojo 1.0 does not make underscore-prefixed struct fields private. Color
 constructors validate their inputs, and every public component observation or
 semantic operation revalidates current storage before returning a result.
+
+The reviewed target layering for encoded and linear-light sRGB, alpha,
+interpolation, owned palettes, and provenance-gated scientific colormaps is
+recorded in [the reference architecture](reference-architecture.md).
