@@ -19,15 +19,14 @@ The governing constraints are:
 The following shallow clones were inspected locally. Commit IDs are the exact
 research inputs rather than floating tags or branches.
 
-| Reference | Commit | Declared license | Relevant API and data |
-| --- | --- | --- | --- |
-| [palette](https://github.com/Ogeon/palette) | `6ce2de444dc0a0b32feae55b1c6c8962c1b94bf8` | MIT OR Apache-2.0 | Rust color types, explicit encodings and conversions, alpha, mixing |
-| [colorous](https://github.com/dtolnay/colorous) | `a3ca579fc1b1d05ee690562780f81549ff9fff7a` | Apache-2.0, with incorporated-data notices | Rust byte-color gradients and categorical schemes ported from d3-scale-chromatic |
-| [Matplotlib](https://github.com/matplotlib/matplotlib) | `0c9b7e2afe620bf6ca6e3e1761d5cdb6065852aa` | Matplotlib license, with separate third-party notices | Normalized-float listed colormaps and scalar-to-RGBA lookup behavior |
+| Reference | Commit | Retrieved | Declared license | Relevant API and data |
+| --- | --- | --- | --- | --- |
+| [palette](https://github.com/Ogeon/palette) | `6ce2de444dc0a0b32feae55b1c6c8962c1b94bf8` | 2026-08-20 | MIT OR Apache-2.0 | Rust color types, explicit encodings and conversions, alpha, mixing |
+| [colorous](https://github.com/dtolnay/colorous) | `a3ca579fc1b1d05ee690562780f81549ff9fff7a` | 2026-08-20 | Apache-2.0, with incorporated-data notices | Rust byte-color gradients and categorical schemes ported from d3-scale-chromatic |
+| [Matplotlib](https://github.com/matplotlib/matplotlib) | `0c9b7e2afe620bf6ca6e3e1761d5cdb6065852aa` | 2026-08-20 | Matplotlib license, with separate third-party notices | Normalized-float listed colormaps and scalar-to-RGBA lookup behavior |
 
-The local clones live outside the Akari repository under
-`/Users/ryuichi/dev/reference-libraries/akari/`. They are research material and
-must not become package inputs by accident.
+The local clones live outside the Akari repository. They are audit-only research
+material and must never become generator, build, or package inputs.
 
 ### Palette
 
@@ -244,14 +243,14 @@ premultiplied interpolation path must accept the nominal premultiplied type.
 These are three different abstractions:
 
 ```text
-CategoricalPalette[C]
-  ordered, finite colors; exact index lookup; never interpolated
+SrgbCategoricalPalette
+  ordered, finite encoded-sRGB colors; exact index lookup; never interpolated
 
-Gradient[C]
-  two or more ordered stops in one nominal color type; explicit interpolation
+LinearSrgbGradient
+  two or more ordered linear-light stops; explicit linear-light interpolation
 
-ScientificColormap
-  named, provenance-bearing sampled map with a declared stored color space
+SrgbScientificColormap
+  named, provenance-bearing sampled map of encoded-sRGB entries
 ```
 
 A palette or gradient snapshots caller data on construction. It owns a validated
@@ -260,10 +259,12 @@ changing the value. Because Mojo 1.0 exposes underscore-prefixed fields, every
 public read or sample revalidates reachable list state until true private storage
 is available.
 
-Categorical palettes reject emptiness. Gradients reject fewer than two stops,
-non-finite positions, positions outside `[0, 1]`, or non-increasing positions.
-A scientific colormap must have at least two entries and declares whether its
-table is encoded sRGB, linear-light sRGB, or another future nominal space.
+`SrgbCategoricalPalette` rejects emptiness. `LinearSrgbGradient` rejects fewer
+than two stops, non-finite positions, positions outside `[0, 1]`, or
+non-increasing positions. `SrgbScientificColormap` has at least two encoded-sRGB
+entries. Its color-space interpretation is fixed by the nominal type and its
+provenance manifest, not a mutable runtime tag. A future map in another space
+gets another concrete nominal type after demonstrated demand.
 
 Endpoint-inclusive regular sampling uses `i / (count - 1)` for `count > 1`.
 The contract for requested sample counts is:
@@ -288,11 +289,11 @@ ranges, and invalid externally mutated storage. Errors name the operation and
 invalid component or structural condition. The strict layer does not repair,
 clamp, replace, or ignore bad values.
 
-Policy choices with more than two states use a nominal total representation,
-such as `InterpolationSpace`, whose every reachable state has defined behavior.
-They are not represented by combinations of booleans that mutation can make
-contradictory. Where current Mojo visibility prevents an airtight enum-like
-value, construction and every observation validate a single discriminant.
+The v0.1 color and container types encode interpolation and color-space policy in
+their nominal type and method names; they do not carry a runtime
+`InterpolationSpace` or color-space tag. A future policy value with more than
+two states must use a nominal total representation whose every reachable state
+has defined behavior, never contradictory boolean combinations.
 
 ## Generated data and license boundary
 
@@ -305,6 +306,7 @@ A3.1 must choose the canonical upstream at an exact commit and record, per map:
 public map name
 designers and original project attribution
 source repository URL, commit, and file/range
+retrieval date
 declared color-space and transfer interpretation, with authority
 source license and required notices
 source-file SHA-256
@@ -317,7 +319,9 @@ any transformation and a concise change summary
 Generated Mojo data is acceptable because users must not need Python, Rust, or C
 at runtime. The generator may use a development-only toolchain, but it must be
 pinned, deterministic, reviewable, and unable to fetch a moving network source.
-It reads only a vendored, license-reviewed input or a verified local snapshot.
+It reads only a canonical input vendored in Akari after license review, with the
+source checksum and required notices committed beside it. External research
+clones remain audit-only and are never required for regeneration.
 
 Akari's MIT OR Apache-2.0 source license does not erase an incorporated dataset's
 license. Derivation from Colorous/d3 requires the applicable Apache-2.0,
@@ -350,7 +354,8 @@ inputs and licensing have been reviewed.
 ### Rejected or deferred
 
 - Palette's generic type-parameter matrix is too broad for Akari v0.1. Akari
-  starts with a few nominal concrete types and grows only from tested demand.
+  starts with concrete nominal color and container types and grows only from
+  tested demand.
 - Implicit clamping of interpolation amounts, as used by Palette and Colorous,
   conflicts with Akari's strict public boundary. A separately named convenience
   can be added later.
@@ -364,6 +369,9 @@ inputs and licensing have been reviewed.
 - Implicit gamma approximations, encoded-space arithmetic under an unqualified
   name, automatic gamut clipping, CSS parsing, ICC profiles, HDR encodings, and
   renderer-specific pixel formats remain outside v0.1.
+- v0.1 defines no cross-gamut conversion. A future conversion that can leave the
+  destination gamut is fallible unless the caller selects a separately named,
+  documented gamut-mapping operation; it never clips implicitly.
 - Runtime-configurable transfer/LUT builders are deferred. The pinned Palette
   wiring mismatch demonstrates why Akari's generated LUTs need reference parity,
   generator checksums, and a single nominal transfer owner.
@@ -400,17 +408,17 @@ var encoded_mid = encoded.lerp_encoded(Srgb(1.0, 1.0, 1.0), 0.5)
 Non-root modules can expose containers without bloating `akari.__init__`:
 
 ```mojo
-from akari.palette import CategoricalPalette
+from akari.palette import SrgbCategoricalPalette
 from akari.gradient import LinearSrgbGradient
-from akari.colormap import viridis
+from akari.colormap import SrgbScientificColormap, viridis
 
-var palette = CategoricalPalette(colors)
+var palette = SrgbCategoricalPalette(colors)
 var first = palette.at(0)
 
 var gradient = LinearSrgbGradient(stops)
 var strict_color = gradient.at(0.25)
 
-var map = viridis()
+var map: SrgbScientificColormap = viridis()
 var samples = map.sample_regular(8)  # includes both endpoints
 ```
 
@@ -440,14 +448,16 @@ Each issue adds unit, reference-value, and invariant coverage before optimizatio
 - a fixture proving encoded and linear-light midpoints intentionally differ;
 - strict rejection of non-finite/out-of-range amounts;
 - gradient positions, zero/one/many regular samples, and exact endpoint inclusion;
-- caller-list mutation does not change an owned palette or gradient;
+- caller-list mutation does not change an owned `SrgbCategoricalPalette` or
+  `LinearSrgbGradient`;
 - direct mutation of every reachable container field is rejected on observation.
 
 ### Scientific data
 
 - source and generated SHA-256 fixtures and expected table length;
 - exact first, middle, and last entries plus a whole-table checksum;
-- declared encoded/linear interpretation tested through nominal output type;
+- encoded-sRGB interpretation tested through the nominal
+  `SrgbScientificColormap` output type;
 - regular sampling endpoints and strict/clamped coordinate behavior;
 - deterministic regeneration produces no diff in a clean worktree;
 - source and binary package smoke tests contain required notices.
@@ -492,14 +502,17 @@ owned gradients and palettes
 provenance-approved generated colormaps
 ```
 
-The earliest dependency-ready, issue-sized order is:
+The earliest dependency-ready, issue-sized order is below. Its first item is a
+proposed roadmap addition; this architecture document does not silently reopen
+the completed A0 gate.
 
-1. **A0.4 Stored byte API:** implement only the already-specified strict raw
-   `RGBA` byte import/export contract and exhaustive threshold tests.
+1. **Proposed A0.4 Stored byte API:** after a separate roadmap decision,
+   implement only the already-specified strict raw `RGBA` byte import/export
+   contract and exhaustive threshold tests.
 2. **A1.1a Encoded sRGB value:** add nominal normalized `Srgb`/`Srgba`, with no
    transfer hidden in construction and a small root-export decision.
-3. **A1.1b Linear sRGB transfer:** add `LinearSrgb`/`LinearSrgba` and exact
-   explicit bidirectional transfer, including alpha preservation.
+3. **A1.1b Linear sRGB transfer:** add `LinearSrgb`/`LinearSrgba` and the
+   specified piecewise bidirectional transfer, including alpha preservation.
 4. **A1.1c Encoded byte API:** apply the numeric-format contract to `Srgb` and
    `Srgba`; do not combine it with transfer conversion.
 5. **A1.2 HSL** and then **A1.3 HSV:** define them relative to encoded sRGB and
@@ -508,14 +521,15 @@ The earliest dependency-ready, issue-sized order is:
    coverage gate all later color-space-aware containers.
 7. **A2.1 Interpolation policy:** name stored, encoded, linear-light, and hue
    paths; defer perceptual interpolation until its nominal space exists.
-8. **A2.2 Gradient sampling:** owned validated stops, strict coordinates, and
-   zero/one/many endpoint-inclusive sampling.
-9. **A2.3 Palette values:** categorical and sequential ownership without named
+8. **A2.2 Gradient sampling:** add `LinearSrgbGradient` with owned validated
+   stops, strict coordinates, and zero/one/many endpoint-inclusive sampling.
+9. **A2.3 Palette values:** add `SrgbCategoricalPalette` ownership without named
    scientific datasets; **A2.4** then closes validation and mutation gaps.
 10. **A3.1 Data provenance:** select canonical sources, licenses, color-space
     interpretation, manifests, notices, and deterministic generator.
-11. **A3.2 Initial maps:** add one reviewed generated map first, verify packaging,
-    then add viridis/plasma/inferno/magma under the same gate.
+11. **A3.2 Initial maps:** add one reviewed generated `SrgbScientificColormap`
+    first, verify packaging, then add viridis/plasma/inferno/magma under the same
+    gate.
 12. **A3.3 Sampling contract:** stabilize strict versus explicitly clamped map
     sampling before root convenience exports.
 13. **A4 release hardening:** public API audit, downstream proofs, package matrix,
