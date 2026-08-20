@@ -14,8 +14,8 @@ documentation land together.
 - [x] **A0.2 Stored-space interpolation:** implement strict endpoint-bounded
   interpolation, including alpha, and test endpoints and a reference midpoint.
 - [x] **A0.3 Numeric conversion policy:** fix strict range validation,
-  round-to-nearest with half steps toward the higher byte, normative fixtures,
-  and transfer-function boundaries for future 8-bit APIs in
+  deterministic binary64 threshold regions with equality toward the higher
+  byte, adjacent-value fixtures, and transfer-function boundaries in
   `docs/numeric-conversion.md`; no constructor/exporter is added by this gate.
 
 Completion gate: the root exports only `RGBA`; `pixi run check` and the installed
