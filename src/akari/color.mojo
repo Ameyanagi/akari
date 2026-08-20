@@ -8,6 +8,7 @@ from std.memory import bitcast
 comptime _FLOAT64_FRACTION_MASK = UInt64(0x000F_FFFF_FFFF_FFFF)
 comptime _FLOAT64_EXPONENT_MASK = UInt64(0x7FF)
 comptime _FLOAT64_HIDDEN_BIT = UInt64(0x0010_0000_0000_0000)
+comptime _HEX_DIGITS = "0123456789abcdef"
 
 
 def _validate_channel(value: Float64, name: String) raises:
@@ -65,6 +66,15 @@ def _byte_from_normalized(value: Float64) -> UInt8:
         else:
             upper = middle
     return UInt8(lower)
+
+
+def _append_hex_byte(mut result: String, byte: UInt8):
+    """Append one byte as two lowercase hexadecimal digits."""
+    var value = Int(byte)
+    var high = value // 16
+    var low = value % 16
+    result += String(_HEX_DIGITS[byte = high : high + 1])
+    result += String(_HEX_DIGITS[byte = low : low + 1])
 
 
 struct _Validated:
@@ -181,6 +191,18 @@ struct RGBA(Copyable, Equatable, ImplicitlyCopyable, Writable):
             _byte_from_normalized(self._blue),
             _byte_from_normalized(self._alpha),
         )
+
+    def hex(self) -> String:
+        """Return ``#rrggbbaa`` using strict stored-space byte quantization.
+
+        The RGB and alpha components carry no implied transfer function; this is
+        the same transfer-agnostic stored-space export as ``stored_bytes``.
+        """
+        var result = String("#")
+        var stored = self.stored_bytes()
+        for index in range(4):
+            _append_hex_byte(result, stored[index])
+        return result^
 
     def lerp(self, other: Self, amount: Float64) raises -> Self:
         """Interpolate components, rejecting an amount outside ``[0, 1]``."""

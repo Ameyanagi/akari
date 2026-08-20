@@ -39,3 +39,15 @@ Generated table file SHA-256: `5d8ca13aa7c3302f7bcb1f28329e06b5735d35da729fa2ed0
 Exact regeneration command: `uv run scripts/generate_colormaps.py`.
 
 <!-- END GENERATED COLORMAP LEDGER -->
+
+## Hand-curated categorical palettes
+
+`Palette.category10()` and `Palette.tableau10()` record the published palette
+data from [d3-scale-chromatic](https://github.com/d3/d3-scale-chromatic), which
+is distributed under the ISC license. These hand-written records intentionally
+live outside the generated colormap ledger.
+
+- `category10`: `1f77b4`, `ff7f0e`, `2ca02c`, `d62728`, `9467bd`, `8c564b`,
+  `e377c2`, `7f7f7f`, `bcbd22`, `17becf`
+- `tableau10`: `4e79a7`, `f28e2c`, `e15759`, `76b7b2`, `59a14f`, `edc948`,
+  `b07aa1`, `ff9da7`, `9c755f`, `bab0ab`

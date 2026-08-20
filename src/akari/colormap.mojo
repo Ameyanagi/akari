@@ -27,6 +27,35 @@ def _clamp_colormap_coordinate(value: Float64) -> Float64:
     return value
 
 
+def _interpolate_table(
+    table: Array[SIMD[DType.uint8, 4], 256], coordinate: Float64
+) -> RGBA:
+    """Interpolate an already-clamped coordinate in one borrowed byte table."""
+    var position = coordinate * 255.0
+    var index = Int(floor(position))
+    var fraction = position - Float64(index)
+    var current = table[index]
+    if index == 255 or fraction == 0.0:
+        return RGBA._from_validated(
+            _normalized_from_byte(current[0]),
+            _normalized_from_byte(current[1]),
+            _normalized_from_byte(current[2]),
+            1.0,
+        )
+
+    var following = table[index + 1]
+    var remaining = 1.0 - fraction
+    return RGBA._from_validated(
+        _normalized_from_byte(current[0]) * remaining
+        + _normalized_from_byte(following[0]) * fraction,
+        _normalized_from_byte(current[1]) * remaining
+        + _normalized_from_byte(following[1]) * fraction,
+        _normalized_from_byte(current[2]) * remaining
+        + _normalized_from_byte(following[2]) * fraction,
+        1.0,
+    )
+
+
 def _validate_bounds(lo: Float64, hi: Float64) raises:
     if not isfinite(lo) or not isfinite(hi) or lo >= hi:
         raise Error(
@@ -105,29 +134,7 @@ struct Colormap(Copyable, Equatable, ImplicitlyCopyable, Writable):
         """
         var table = self._table()
         var coordinate = _clamp_colormap_coordinate(t)
-        var position = coordinate * 255.0
-        var index = Int(floor(position))
-        var fraction = position - Float64(index)
-        var current = table[index]
-        if index == 255 or fraction == 0.0:
-            return RGBA._from_validated(
-                _normalized_from_byte(current[0]),
-                _normalized_from_byte(current[1]),
-                _normalized_from_byte(current[2]),
-                1.0,
-            )
-
-        var following = table[index + 1]
-        var remaining = 1.0 - fraction
-        return RGBA._from_validated(
-            _normalized_from_byte(current[0]) * remaining
-            + _normalized_from_byte(following[0]) * fraction,
-            _normalized_from_byte(current[1]) * remaining
-            + _normalized_from_byte(following[1]) * fraction,
-            _normalized_from_byte(current[2]) * remaining
-            + _normalized_from_byte(following[2]) * fraction,
-            1.0,
-        )
+        return _interpolate_table(table, coordinate)
 
     def sample(self, i: Int, n: Int) raises -> RGBA:
         """Return endpoint-inclusive discrete sample ``i`` of ``n``.
@@ -170,34 +177,7 @@ struct Colormap(Copyable, Equatable, ImplicitlyCopyable, Writable):
             if n > 1:
                 coordinate = Float64(sample_index) / Float64(n - 1)
             coordinate = _clamp_colormap_coordinate(coordinate)
-            var position = coordinate * 255.0
-            var table_index = Int(floor(position))
-            var fraction = position - Float64(table_index)
-            var current = table[table_index]
-            if table_index == 255 or fraction == 0.0:
-                result.append(
-                    RGBA._from_validated(
-                        _normalized_from_byte(current[0]),
-                        _normalized_from_byte(current[1]),
-                        _normalized_from_byte(current[2]),
-                        1.0,
-                    )
-                )
-                continue
-
-            var following = table[table_index + 1]
-            var remaining = 1.0 - fraction
-            result.append(
-                RGBA._from_validated(
-                    _normalized_from_byte(current[0]) * remaining
-                    + _normalized_from_byte(following[0]) * fraction,
-                    _normalized_from_byte(current[1]) * remaining
-                    + _normalized_from_byte(following[1]) * fraction,
-                    _normalized_from_byte(current[2]) * remaining
-                    + _normalized_from_byte(following[2]) * fraction,
-                    1.0,
-                )
-            )
+            result.append(_interpolate_table(table, coordinate))
         return result^
 
     def map(
@@ -219,34 +199,7 @@ struct Colormap(Copyable, Equatable, ImplicitlyCopyable, Writable):
             if values[value_index] == values[value_index]:
                 coordinate = (values[value_index] - lo) / width
             coordinate = _clamp_colormap_coordinate(coordinate)
-            var position = coordinate * 255.0
-            var table_index = Int(floor(position))
-            var fraction = position - Float64(table_index)
-            var current = table[table_index]
-            if table_index == 255 or fraction == 0.0:
-                result.append(
-                    RGBA._from_validated(
-                        _normalized_from_byte(current[0]),
-                        _normalized_from_byte(current[1]),
-                        _normalized_from_byte(current[2]),
-                        1.0,
-                    )
-                )
-                continue
-
-            var following = table[table_index + 1]
-            var remaining = 1.0 - fraction
-            result.append(
-                RGBA._from_validated(
-                    _normalized_from_byte(current[0]) * remaining
-                    + _normalized_from_byte(following[0]) * fraction,
-                    _normalized_from_byte(current[1]) * remaining
-                    + _normalized_from_byte(following[1]) * fraction,
-                    _normalized_from_byte(current[2]) * remaining
-                    + _normalized_from_byte(following[2]) * fraction,
-                    1.0,
-                )
-            )
+            result.append(_interpolate_table(table, coordinate))
         return result^
 
     def map_bytes(
@@ -279,22 +232,12 @@ struct Colormap(Copyable, Equatable, ImplicitlyCopyable, Writable):
                 result.append(current)
                 continue
 
-            var following = table[table_index + 1]
-            var remaining = 1.0 - fraction
+            var color = _interpolate_table(table, coordinate)
             result.append(
                 SIMD[DType.uint8, 4](
-                    _byte_from_normalized(
-                        _normalized_from_byte(current[0]) * remaining
-                        + _normalized_from_byte(following[0]) * fraction
-                    ),
-                    _byte_from_normalized(
-                        _normalized_from_byte(current[1]) * remaining
-                        + _normalized_from_byte(following[1]) * fraction
-                    ),
-                    _byte_from_normalized(
-                        _normalized_from_byte(current[2]) * remaining
-                        + _normalized_from_byte(following[2]) * fraction
-                    ),
+                    _byte_from_normalized(color.red()),
+                    _byte_from_normalized(color.green()),
+                    _byte_from_normalized(color.blue()),
                     255,
                 )
             )

@@ -4,7 +4,12 @@ from std.builtin.comparable import Equatable
 from std.io import Writable, Writer
 from std.math import cbrt
 
-from .color import _Validated, _validate_channel
+from .color import (
+    _Validated,
+    _append_hex_byte,
+    _byte_from_normalized,
+    _validate_channel,
+)
 from .oklab import Oklab
 
 
@@ -163,6 +168,14 @@ struct Srgb(Copyable, Equatable, Writable):
 
     def blue(self) -> Float64:
         return self._blue
+
+    def hex(self) -> String:
+        """Return lowercase ``#rrggbb`` through strict byte quantization."""
+        var result = String("#")
+        _append_hex_byte(result, _byte_from_normalized(self._red))
+        _append_hex_byte(result, _byte_from_normalized(self._green))
+        _append_hex_byte(result, _byte_from_normalized(self._blue))
+        return result^
 
     def to_linear(self) -> LinearSrgb:
         """Decode gamma-encoded components into linear-light sRGB."""
