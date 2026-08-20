@@ -143,22 +143,22 @@ def test_every_directed_threshold_and_adjacent_values() raises:
 def test_validate_rejects_each_directly_mutated_component() raises:
     var invalid_red = RGBA(0.1, 0.2, 0.3, 0.4)
     invalid_red._red = Float64("nan")
-    with assert_raises(contains="red must be finite"):
+    with assert_raises(contains="red must be finite and within [0, 1]; got nan"):
         invalid_red.validate()
 
     var invalid_green = RGBA(0.1, 0.2, 0.3, 0.4)
     invalid_green._green = Float64("inf")
-    with assert_raises(contains="green must be finite"):
+    with assert_raises(contains="green must be finite and within [0, 1]; got inf"):
         invalid_green.validate()
 
     var invalid_blue = RGBA(0.1, 0.2, 0.3, 0.4)
     invalid_blue._blue = -1.0
-    with assert_raises(contains="blue must be finite"):
+    with assert_raises(contains="blue must be finite and within [0, 1]; got -1.0"):
         invalid_blue.validate()
 
     var invalid_alpha = RGBA(0.1, 0.2, 0.3, 0.4)
     invalid_alpha._alpha = 2.0
-    with assert_raises(contains="alpha must be finite"):
+    with assert_raises(contains="alpha must be finite and within [0, 1]; got 2.0"):
         invalid_alpha.validate()
 
     # Export is intentionally not called on these invalid values: stored_bytes

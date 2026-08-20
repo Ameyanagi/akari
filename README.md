@@ -41,7 +41,8 @@ and explicit component-wise interpolation:
 from akari import RGBA
 
 def main() raises:
-    var middle = RGBA.black().lerp(RGBA(0.8, 0.9, 1.0), 0.5)
+    var black = RGBA.BLACK
+    var middle = black.lerp(RGBA(0.8, 0.9, 1.0), 0.5)
     print(middle.red(), middle.green(), middle.blue(), middle.alpha())
 ```
 

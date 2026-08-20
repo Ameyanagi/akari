@@ -12,7 +12,7 @@ comptime _FLOAT64_HIDDEN_BIT = UInt64(0x0010_0000_0000_0000)
 
 def _validate_channel(value: Float64, name: String) raises:
     if value != value or value < 0.0 or value > 1.0:
-        raise Error(name + " must be finite and between zero and one")
+        raise Error(name + " must be finite and within [0, 1]; got " + String(value))
 
 
 def _normalized_from_byte(value: UInt8) -> Float64:
@@ -72,7 +72,7 @@ struct _Validated:
         pass
 
 
-struct RGBA(Copyable, Equatable, Writable):
+struct RGBA(Copyable, Equatable, ImplicitlyCopyable, Writable):
     """Constructor-validated RGBA components in ``[0, 1]``.
 
     Components are stored without an implied transfer function. ``lerp`` operates
@@ -141,29 +141,12 @@ struct RGBA(Copyable, Equatable, Writable):
         self._blue = blue
         self._alpha = alpha
 
-    @staticmethod
-    def black() -> Self:
-        return Self._from_validated(0.0, 0.0, 0.0, 1.0)
-
-    @staticmethod
-    def transparent() -> Self:
-        return Self._from_validated(0.0, 0.0, 0.0, 0.0)
-
-    @staticmethod
-    def white() -> Self:
-        return Self._from_validated(1.0, 1.0, 1.0, 1.0)
-
-    @staticmethod
-    def red_color() -> Self:
-        return Self._from_validated(1.0, 0.0, 0.0, 1.0)
-
-    @staticmethod
-    def green_color() -> Self:
-        return Self._from_validated(0.0, 1.0, 0.0, 1.0)
-
-    @staticmethod
-    def blue_color() -> Self:
-        return Self._from_validated(0.0, 0.0, 1.0, 1.0)
+    comptime BLACK = RGBA(0.0, 0.0, 0.0, 1.0, _validated=_Validated())
+    comptime WHITE = RGBA(1.0, 1.0, 1.0, 1.0, _validated=_Validated())
+    comptime RED = RGBA(1.0, 0.0, 0.0, 1.0, _validated=_Validated())
+    comptime GREEN = RGBA(0.0, 1.0, 0.0, 1.0, _validated=_Validated())
+    comptime BLUE = RGBA(0.0, 0.0, 1.0, 1.0, _validated=_Validated())
+    comptime TRANSPARENT = RGBA(0.0, 0.0, 0.0, 0.0, _validated=_Validated())
 
     def validate(self) raises:
         """Validate all stored components explicitly."""

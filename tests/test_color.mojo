@@ -30,41 +30,53 @@ def test_lerp_preserves_endpoints_and_interpolates_alpha() raises:
 
 
 def test_invalid_components_and_amounts_raise() raises:
-    with assert_raises(contains="red must be finite"):
+    with assert_raises(contains="red must be finite and within [0, 1]; got -0.1"):
         _ = RGBA(-0.1, 0.0, 0.0)
-    with assert_raises(contains="alpha must be finite"):
+    with assert_raises(contains="alpha must be finite and within [0, 1]; got 1.1"):
         _ = RGBA(0.0, 0.0, 0.0, 1.1)
-    with assert_raises(contains="red must be finite"):
+    with assert_raises(contains="red must be finite and within [0, 1]; got nan"):
         _ = RGBA(Float64("nan"), 0.0, 0.0)
-    with assert_raises(contains="red must be finite"):
+    with assert_raises(contains="red must be finite and within [0, 1]; got inf"):
         _ = RGBA(Float64("inf"), 0.0, 0.0)
-    with assert_raises(contains="red must be finite"):
+    with assert_raises(contains="red must be finite and within [0, 1]; got -inf"):
         _ = RGBA(Float64("-inf"), 0.0, 0.0)
-    var black = RGBA.black()
-    with assert_raises(contains="interpolation amount must be finite"):
-        _ = black.lerp(RGBA.transparent(), 1.01)
-    with assert_raises(contains="interpolation amount must be finite"):
-        _ = black.lerp(RGBA.transparent(), Float64("nan"))
-    with assert_raises(contains="interpolation amount must be finite"):
-        _ = black.lerp(RGBA.transparent(), Float64("inf"))
+    var black = RGBA.BLACK
+    var transparent = RGBA.TRANSPARENT
+    with assert_raises(
+        contains="interpolation amount must be finite and within [0, 1]; got 1.01"
+    ):
+        _ = black.lerp(transparent, 1.01)
+    with assert_raises(
+        contains="interpolation amount must be finite and within [0, 1]; got nan"
+    ):
+        _ = black.lerp(transparent, Float64("nan"))
+    with assert_raises(
+        contains="interpolation amount must be finite and within [0, 1]; got inf"
+    ):
+        _ = black.lerp(transparent, Float64("inf"))
 
 
 def test_validate_rejects_mutated_storage() raises:
     var corrupted = RGBA(0.1, 0.2, 0.3, 0.4)
     corrupted._red = Float64("nan")
-    with assert_raises(contains="red must be finite"):
+    with assert_raises(contains="red must be finite and within [0, 1]; got nan"):
         corrupted.validate()
 
-    var invalid_alpha = RGBA.black()
+    var invalid_alpha = RGBA.BLACK
     invalid_alpha._alpha = 2.0
-    with assert_raises(contains="alpha must be finite"):
+    with assert_raises(contains="alpha must be finite and within [0, 1]; got 2.0"):
         invalid_alpha.validate()
 
 
 def test_exact_equality() raises:
-    assert_true(RGBA.black() == RGBA.black())
-    assert_true(RGBA.black() != RGBA.transparent())
-    assert_true(RGBA.red_color() != RGBA.blue_color())
+    var black = RGBA.BLACK
+    var other_black = RGBA.BLACK
+    var transparent = RGBA.TRANSPARENT
+    var red = RGBA.RED
+    var blue = RGBA.BLUE
+    assert_true(black == other_black)
+    assert_true(black != transparent)
+    assert_true(red != blue)
 
 
 def test_string_representation() raises:
@@ -72,12 +84,18 @@ def test_string_representation() raises:
 
 
 def test_named_colors() raises:
-    assert_true(RGBA.black() == RGBA(0.0, 0.0, 0.0, 1.0))
-    assert_true(RGBA.transparent() == RGBA(0.0, 0.0, 0.0, 0.0))
-    assert_true(RGBA.white() == RGBA(1.0, 1.0, 1.0, 1.0))
-    assert_true(RGBA.red_color() == RGBA(1.0, 0.0, 0.0, 1.0))
-    assert_true(RGBA.green_color() == RGBA(0.0, 1.0, 0.0, 1.0))
-    assert_true(RGBA.blue_color() == RGBA(0.0, 0.0, 1.0, 1.0))
+    var black = RGBA.BLACK
+    var transparent = RGBA.TRANSPARENT
+    var white = RGBA.WHITE
+    var red = RGBA.RED
+    var green = RGBA.GREEN
+    var blue = RGBA.BLUE
+    assert_true(black == RGBA(0.0, 0.0, 0.0, 1.0))
+    assert_true(transparent == RGBA(0.0, 0.0, 0.0, 0.0))
+    assert_true(white == RGBA(1.0, 1.0, 1.0, 1.0))
+    assert_true(red == RGBA(1.0, 0.0, 0.0, 1.0))
+    assert_true(green == RGBA(0.0, 1.0, 0.0, 1.0))
+    assert_true(blue == RGBA(0.0, 0.0, 1.0, 1.0))
 
 
 def main() raises:

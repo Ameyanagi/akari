@@ -69,134 +69,154 @@ def _assert_hsv_fixture(
 
 
 def test_constructor_boundaries() raises:
-    with assert_raises(contains="red must be finite"):
+    with assert_raises(contains="red must be finite and within [0, 1]; got nan"):
         _ = Srgb(Float64("nan"), 0.0, 0.0)
-    with assert_raises(contains="green must be finite"):
+    with assert_raises(contains="green must be finite and within [0, 1]; got inf"):
         _ = Srgb(0.0, Float64("inf"), 0.0)
-    with assert_raises(contains="blue must be finite"):
+    with assert_raises(contains="blue must be finite and within [0, 1]; got -inf"):
         _ = Srgb(0.0, 0.0, Float64("-inf"))
-    with assert_raises(contains="red must be finite"):
+    with assert_raises(contains="red must be finite and within [0, 1]; got -0.01"):
         _ = Srgb(-0.01, 0.0, 0.0)
-    with assert_raises(contains="blue must be finite"):
+    with assert_raises(contains="blue must be finite and within [0, 1]; got 1.01"):
         _ = Srgb(0.0, 0.0, 1.01)
 
-    with assert_raises(contains="red must be finite"):
+    with assert_raises(contains="red must be finite and within [0, 1]; got nan"):
         _ = LinearSrgb(Float64("nan"), 0.0, 0.0)
-    with assert_raises(contains="green must be finite"):
+    with assert_raises(contains="green must be finite and within [0, 1]; got inf"):
         _ = LinearSrgb(0.0, Float64("inf"), 0.0)
-    with assert_raises(contains="blue must be finite"):
+    with assert_raises(contains="blue must be finite and within [0, 1]; got -inf"):
         _ = LinearSrgb(0.0, 0.0, Float64("-inf"))
-    with assert_raises(contains="green must be finite"):
+    with assert_raises(contains="green must be finite and within [0, 1]; got -0.01"):
         _ = LinearSrgb(0.0, -0.01, 0.0)
-    with assert_raises(contains="blue must be finite"):
+    with assert_raises(contains="blue must be finite and within [0, 1]; got 1.01"):
         _ = LinearSrgb(0.0, 0.0, 1.01)
 
-    with assert_raises(contains="hue must be finite"):
+    with assert_raises(contains="hue must be finite; got nan"):
         _ = Hsl(Float64("nan"), 0.0, 0.0)
-    with assert_raises(contains="hue must be finite"):
+    with assert_raises(contains="hue must be finite; got inf"):
         _ = Hsl(Float64("inf"), 0.0, 0.0)
-    with assert_raises(contains="hue must be finite"):
+    with assert_raises(contains="hue must be finite; got -inf"):
         _ = Hsl(Float64("-inf"), 0.0, 0.0)
-    with assert_raises(contains="saturation must be finite"):
+    with assert_raises(
+        contains="saturation must be finite and within [0, 1]; got -0.01"
+    ):
         _ = Hsl(0.0, -0.01, 0.0)
-    with assert_raises(contains="saturation must be finite"):
+    with assert_raises(contains="saturation must be finite and within [0, 1]; got nan"):
         _ = Hsl(0.0, Float64("nan"), 0.0)
-    with assert_raises(contains="saturation must be finite"):
+    with assert_raises(contains="saturation must be finite and within [0, 1]; got inf"):
         _ = Hsl(0.0, Float64("inf"), 0.0)
-    with assert_raises(contains="saturation must be finite"):
+    with assert_raises(
+        contains="saturation must be finite and within [0, 1]; got -inf"
+    ):
         _ = Hsl(0.0, Float64("-inf"), 0.0)
-    with assert_raises(contains="saturation must be finite"):
+    with assert_raises(
+        contains="saturation must be finite and within [0, 1]; got 1.01"
+    ):
         _ = Hsl(0.0, 1.01, 0.0)
-    with assert_raises(contains="lightness must be finite"):
+    with assert_raises(contains="lightness must be finite and within [0, 1]; got nan"):
         _ = Hsl(0.0, 0.0, Float64("nan"))
-    with assert_raises(contains="lightness must be finite"):
+    with assert_raises(contains="lightness must be finite and within [0, 1]; got inf"):
         _ = Hsl(0.0, 0.0, Float64("inf"))
-    with assert_raises(contains="lightness must be finite"):
+    with assert_raises(contains="lightness must be finite and within [0, 1]; got -inf"):
         _ = Hsl(0.0, 0.0, Float64("-inf"))
-    with assert_raises(contains="lightness must be finite"):
+    with assert_raises(
+        contains="lightness must be finite and within [0, 1]; got -0.01"
+    ):
         _ = Hsl(0.0, 0.0, -0.01)
-    with assert_raises(contains="lightness must be finite"):
+    with assert_raises(contains="lightness must be finite and within [0, 1]; got 1.01"):
         _ = Hsl(0.0, 0.0, 1.01)
 
-    with assert_raises(contains="hue must be finite"):
+    with assert_raises(contains="hue must be finite; got nan"):
         _ = Hsv(Float64("nan"), 0.0, 0.0)
-    with assert_raises(contains="hue must be finite"):
+    with assert_raises(contains="hue must be finite; got inf"):
         _ = Hsv(Float64("inf"), 0.0, 0.0)
-    with assert_raises(contains="hue must be finite"):
+    with assert_raises(contains="hue must be finite; got -inf"):
         _ = Hsv(Float64("-inf"), 0.0, 0.0)
-    with assert_raises(contains="saturation must be finite"):
+    with assert_raises(
+        contains="saturation must be finite and within [0, 1]; got -inf"
+    ):
         _ = Hsv(0.0, Float64("-inf"), 0.0)
-    with assert_raises(contains="saturation must be finite"):
+    with assert_raises(contains="saturation must be finite and within [0, 1]; got nan"):
         _ = Hsv(0.0, Float64("nan"), 0.0)
-    with assert_raises(contains="saturation must be finite"):
+    with assert_raises(contains="saturation must be finite and within [0, 1]; got inf"):
         _ = Hsv(0.0, Float64("inf"), 0.0)
-    with assert_raises(contains="saturation must be finite"):
+    with assert_raises(
+        contains="saturation must be finite and within [0, 1]; got -0.01"
+    ):
         _ = Hsv(0.0, -0.01, 0.0)
-    with assert_raises(contains="saturation must be finite"):
+    with assert_raises(
+        contains="saturation must be finite and within [0, 1]; got 1.01"
+    ):
         _ = Hsv(0.0, 1.01, 0.0)
-    with assert_raises(contains="value must be finite"):
+    with assert_raises(contains="value must be finite and within [0, 1]; got nan"):
         _ = Hsv(0.0, 0.0, Float64("nan"))
-    with assert_raises(contains="value must be finite"):
+    with assert_raises(contains="value must be finite and within [0, 1]; got inf"):
         _ = Hsv(0.0, 0.0, Float64("inf"))
-    with assert_raises(contains="value must be finite"):
+    with assert_raises(contains="value must be finite and within [0, 1]; got -inf"):
         _ = Hsv(0.0, 0.0, Float64("-inf"))
-    with assert_raises(contains="value must be finite"):
+    with assert_raises(contains="value must be finite and within [0, 1]; got -0.01"):
         _ = Hsv(0.0, 0.0, -0.01)
-    with assert_raises(contains="value must be finite"):
+    with assert_raises(contains="value must be finite and within [0, 1]; got 1.01"):
         _ = Hsv(0.0, 0.0, 1.01)
 
 
 def test_validate_rejects_direct_mutation() raises:
     var encoded_red = Srgb(0.1, 0.2, 0.3)
     encoded_red._red = Float64("nan")
-    with assert_raises(contains="red must be finite"):
+    with assert_raises(contains="red must be finite and within [0, 1]; got nan"):
         encoded_red.validate()
     var encoded_green = Srgb(0.1, 0.2, 0.3)
     encoded_green._green = 2.0
-    with assert_raises(contains="green must be finite"):
+    with assert_raises(contains="green must be finite and within [0, 1]; got 2.0"):
         encoded_green.validate()
     var encoded_blue = Srgb(0.1, 0.2, 0.3)
     encoded_blue._blue = -1.0
-    with assert_raises(contains="blue must be finite"):
+    with assert_raises(contains="blue must be finite and within [0, 1]; got -1.0"):
         encoded_blue.validate()
 
     var linear_red = LinearSrgb(0.1, 0.2, 0.3)
     linear_red._red = Float64("inf")
-    with assert_raises(contains="red must be finite"):
+    with assert_raises(contains="red must be finite and within [0, 1]; got inf"):
         linear_red.validate()
     var linear_green = LinearSrgb(0.1, 0.2, 0.3)
     linear_green._green = -1.0
-    with assert_raises(contains="green must be finite"):
+    with assert_raises(contains="green must be finite and within [0, 1]; got -1.0"):
         linear_green.validate()
     var linear_blue = LinearSrgb(0.1, 0.2, 0.3)
     linear_blue._blue = 2.0
-    with assert_raises(contains="blue must be finite"):
+    with assert_raises(contains="blue must be finite and within [0, 1]; got 2.0"):
         linear_blue.validate()
 
     var hsl_hue = Hsl(30.0, 0.5, 0.5)
     hsl_hue._hue = 360.0
-    with assert_raises(contains="hue must be finite"):
+    with assert_raises(
+        contains="hue must be finite and normalized within [0, 360); got 360.0"
+    ):
         hsl_hue.validate()
     var hsl_saturation = Hsl(30.0, 0.5, 0.5)
     hsl_saturation._saturation = Float64("inf")
-    with assert_raises(contains="saturation must be finite"):
+    with assert_raises(contains="saturation must be finite and within [0, 1]; got inf"):
         hsl_saturation.validate()
     var hsl_lightness = Hsl(30.0, 0.5, 0.5)
     hsl_lightness._lightness = -1.0
-    with assert_raises(contains="lightness must be finite"):
+    with assert_raises(contains="lightness must be finite and within [0, 1]; got -1.0"):
         hsl_lightness.validate()
 
     var hsv_hue = Hsv(30.0, 0.5, 0.5)
     hsv_hue._hue = Float64("nan")
-    with assert_raises(contains="hue must be finite"):
+    with assert_raises(
+        contains="hue must be finite and normalized within [0, 360); got nan"
+    ):
         hsv_hue.validate()
     var hsv_saturation = Hsv(30.0, 0.5, 0.5)
     hsv_saturation._saturation = -1.0
-    with assert_raises(contains="saturation must be finite"):
+    with assert_raises(
+        contains="saturation must be finite and within [0, 1]; got -1.0"
+    ):
         hsv_saturation.validate()
     var hsv_value = Hsv(30.0, 0.5, 0.5)
     hsv_value._value = Float64("inf")
-    with assert_raises(contains="value must be finite"):
+    with assert_raises(contains="value must be finite and within [0, 1]; got inf"):
         hsv_value.validate()
 
 

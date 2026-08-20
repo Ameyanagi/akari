@@ -2,8 +2,10 @@
 
 from std.builtin.comparable import Equatable
 from std.io import Writable, Writer
+from std.math import cbrt
 
 from .color import _Validated, _validate_channel
+from .oklab import Oklab
 
 
 # Standard IEC 61966-2-1 sRGB transfer constants.
@@ -17,7 +19,7 @@ comptime _SRGB_TRANSFER_EXPONENT = 2.4
 
 def _normalize_hue(hue: Float64) raises -> Float64:
     if hue != hue or hue == Float64("inf") or hue == Float64("-inf"):
-        raise Error("hue must be finite")
+        raise Error("hue must be finite; got " + String(hue))
     var normalized = hue % 360.0
     if normalized < 0.0:
         normalized += 360.0
@@ -28,7 +30,9 @@ def _normalize_hue(hue: Float64) raises -> Float64:
 
 def _validate_normalized_hue(hue: Float64) raises:
     if hue != hue or hue < 0.0 or hue >= 360.0:
-        raise Error("hue must be finite and normalized between zero and 360")
+        raise Error(
+            "hue must be finite and normalized within [0, 360); got " + String(hue)
+        )
 
 
 def _clamp_conversion_unit(value: Float64) -> Float64:
@@ -276,6 +280,38 @@ struct LinearSrgb(Copyable, Equatable, Writable):
             _clamp_conversion_unit(_encode_srgb_channel(self._red)),
             _clamp_conversion_unit(_encode_srgb_channel(self._green)),
             _clamp_conversion_unit(_encode_srgb_channel(self._blue)),
+        )
+
+    def to_oklab(self) -> Oklab:
+        """Convert trusted linear-light sRGB components to Oklab.
+
+        The Oklab lightness is clamped only to absorb matrix rounding dust;
+        opponent components are preserved without clamping.
+        """
+        var l = (
+            0.4122214708 * self._red
+            + 0.5363325363 * self._green
+            + 0.0514459929 * self._blue
+        )
+        var m = (
+            0.2119034982 * self._red
+            + 0.6806995451 * self._green
+            + 0.1073969566 * self._blue
+        )
+        var s = (
+            0.0883024619 * self._red
+            + 0.2817188376 * self._green
+            + 0.6299787005 * self._blue
+        )
+        var l_root = cbrt(l)
+        var m_root = cbrt(m)
+        var s_root = cbrt(s)
+        return Oklab._from_validated(
+            _clamp_conversion_unit(
+                0.2104542553 * l_root + 0.7936177850 * m_root - 0.0040720468 * s_root
+            ),
+            1.9779984951 * l_root - 2.4285922050 * m_root + 0.4505937099 * s_root,
+            0.0259040371 * l_root + 0.7827717662 * m_root - 0.8086757660 * s_root,
         )
 
     def __eq__(self, other: Self) -> Bool:
