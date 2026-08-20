@@ -1,4 +1,5 @@
 from akari import LinearSrgb, Oklab
+from std.collections import List
 from std.testing import TestSuite, assert_raises, assert_true
 
 
@@ -75,6 +76,17 @@ def test_linear_srgb_round_trip_representative_subset() raises:
     _assert_round_trip(0.05, 0.05, 0.0)
     _assert_round_trip(0.5, 0.05, 0.0)
     _assert_round_trip(1.0, 0.05, 0.0)
+
+
+def test_linear_srgb_round_trip_full_component_grid() raises:
+    var components: List[Float64] = [0.0, 0.05, 0.25, 0.5, 0.75, 1.0]
+    for red in components:
+        for green in components:
+            for blue in components:
+                var recovered = LinearSrgb(red, green, blue).to_oklab().to_linear_srgb()
+                assert_true(_near(recovered.red(), red, 5e-7))
+                assert_true(_near(recovered.green(), green, 5e-7))
+                assert_true(_near(recovered.blue(), blue, 5e-7))
 
 
 def test_lerp_endpoints_midpoint_and_invalid_amounts() raises:
