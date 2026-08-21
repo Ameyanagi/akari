@@ -75,6 +75,24 @@ struct Oklab(Copyable, Equatable, ImplicitlyCopyable, Writable):
     def b(self) -> Float64:
         return self._b
 
+    def lighten(self, amount: Float64) raises -> Oklab:
+        """Move lightness fractionally toward 1 while preserving ``a`` and ``b``."""
+        _validate_channel(amount, "lighten amount")
+        return Self._from_validated(
+            self._lightness + (1.0 - self._lightness) * amount,
+            self._a,
+            self._b,
+        )
+
+    def darken(self, amount: Float64) raises -> Oklab:
+        """Move lightness fractionally toward 0 while preserving ``a`` and ``b``."""
+        _validate_channel(amount, "darken amount")
+        return Self._from_validated(
+            self._lightness * (1.0 - amount),
+            self._a,
+            self._b,
+        )
+
     def lerp(self, other: Self, amount: Float64) raises -> Self:
         """Interpolate components, rejecting an amount outside ``[0, 1]``."""
         _validate_channel(amount, "interpolation amount")

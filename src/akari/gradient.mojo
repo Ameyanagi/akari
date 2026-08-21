@@ -5,10 +5,8 @@ from std.collections import List
 from std.io import Writable, Writer
 from std.math import floor
 
-from .color import RGBA
+from .color import RGBA, _mix_rgba
 from .mix_space import MixSpace
-from .oklab import Oklab
-from .rgb_spaces import LinearSrgb, Srgb
 
 
 def _clamp_gradient_coordinate(value: Float64) -> Float64:
@@ -62,48 +60,7 @@ struct Gradient(Copyable, Equatable, Writable):
         return self._space
 
     def _mix(self, a: RGBA, b: RGBA, fraction: Float64) -> RGBA:
-        var remaining = 1.0 - fraction
-        var alpha = a.alpha() * remaining + b.alpha() * fraction
-        if self._space == MixSpace.STORED:
-            return RGBA._from_validated(
-                a.red() * remaining + b.red() * fraction,
-                a.green() * remaining + b.green() * fraction,
-                a.blue() * remaining + b.blue() * fraction,
-                alpha,
-            )
-
-        var encoded_a = Srgb._from_validated(a.red(), a.green(), a.blue())
-        var encoded_b = Srgb._from_validated(b.red(), b.green(), b.blue())
-        var linear_a = encoded_a.to_linear()
-        var linear_b = encoded_b.to_linear()
-        if self._space == MixSpace.LINEAR:
-            var mixed_linear = LinearSrgb._from_validated(
-                linear_a.red() * remaining + linear_b.red() * fraction,
-                linear_a.green() * remaining + linear_b.green() * fraction,
-                linear_a.blue() * remaining + linear_b.blue() * fraction,
-            )
-            var mixed_encoded = mixed_linear.to_encoded()
-            return RGBA._from_validated(
-                mixed_encoded.red(),
-                mixed_encoded.green(),
-                mixed_encoded.blue(),
-                alpha,
-            )
-
-        var oklab_a = linear_a.to_oklab()
-        var oklab_b = linear_b.to_oklab()
-        var mixed_oklab = Oklab._from_validated(
-            oklab_a.lightness() * remaining + oklab_b.lightness() * fraction,
-            oklab_a.a() * remaining + oklab_b.a() * fraction,
-            oklab_a.b() * remaining + oklab_b.b() * fraction,
-        )
-        var mixed_encoded = mixed_oklab.to_linear_srgb().to_encoded()
-        return RGBA._from_validated(
-            mixed_encoded.red(),
-            mixed_encoded.green(),
-            mixed_encoded.blue(),
-            alpha,
-        )
+        return _mix_rgba(a, b, fraction, self._space)
 
     def at(self, t: Float64) -> RGBA:
         """Sample after clamping to ``[0, 1]``; NaN maps to the first stop."""

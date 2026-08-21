@@ -61,6 +61,14 @@ def test_oklab_midpoint_is_perceptual_gray() raises:
     assert_true(midpoint.alpha() == 1.0)
 
 
+def test_oklab_gradient_matches_rgba_mix() raises:
+    var first = RGBA(0.15, 0.3, 0.75, 0.2)
+    var second = RGBA(0.85, 0.6, 0.1, 0.8)
+    var stops: List[RGBA] = [first, second]
+    var gradient = Gradient(stops^, MixSpace.OKLAB)
+    assert_true(gradient.at(0.25) == first.mix(second, 0.25, MixSpace.OKLAB))
+
+
 def test_linear_midpoint_is_encoded_linear_half() raises:
     var midpoint = _black_to_white(MixSpace.LINEAR).at(0.5)
     assert_true(_near(midpoint.red(), 0.7354, 1e-3))

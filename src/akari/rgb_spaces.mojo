@@ -5,6 +5,7 @@ from std.io import Writable, Writer
 from std.math import cbrt
 
 from .color import (
+    RGBA,
     _Validated,
     _append_hex_byte,
     _byte_from_normalized,
@@ -178,6 +179,11 @@ struct Srgb(Copyable, Equatable, Writable):
         _append_hex_byte(result, _byte_from_normalized(self._blue))
         return result^
 
+    def to_rgba(self, alpha: Float64 = 1.0) raises -> RGBA:
+        """Bridge gamma-encoded sRGB into RGBA, validating only alpha."""
+        _validate_color_channel(alpha, "alpha")
+        return RGBA._from_validated(self._red, self._green, self._blue, alpha)
+
     def to_linear(self) -> LinearSrgb:
         """Decode gamma-encoded components into linear-light sRGB."""
         return LinearSrgb._from_validated(
@@ -219,6 +225,26 @@ struct Srgb(Copyable, Equatable, Writable):
             _clamp_conversion_unit(saturation),
             _clamp_conversion_unit(maximum),
         )
+
+    def lighten(self, amount: Float64) raises -> Srgb:
+        """Lighten through Oklab."""
+        return self.to_linear().to_oklab().lighten(amount).to_linear_srgb().to_encoded()
+
+    def darken(self, amount: Float64) raises -> Srgb:
+        """Darken through Oklab."""
+        return self.to_linear().to_oklab().darken(amount).to_linear_srgb().to_encoded()
+
+    def saturate(self, amount: Float64) raises -> Srgb:
+        """Saturate through HSL."""
+        return self.to_hsl().saturate(amount).to_srgb()
+
+    def desaturate(self, amount: Float64) raises -> Srgb:
+        """Desaturate through HSL."""
+        return self.to_hsl().desaturate(amount).to_srgb()
+
+    def shift_hue(self, degrees: Float64) raises -> Srgb:
+        """Shift hue through HSL."""
+        return self.to_hsl().shift_hue(degrees).to_srgb()
 
     def __eq__(self, other: Self) -> Bool:
         return (
@@ -407,6 +433,38 @@ struct Hsl(Copyable, Equatable, Writable):
 
     def lightness(self) -> Float64:
         return self._lightness
+
+    def shift_hue(self, degrees: Float64) raises -> Hsl:
+        """Shift hue by finite degrees and wrap the result into ``[0, 360)``."""
+        if (
+            degrees != degrees
+            or degrees == Float64("inf")
+            or degrees == Float64("-inf")
+        ):
+            raise Error("hue shift must be finite; got " + String(degrees))
+        return Self._from_validated(
+            _normalize_hue(self._hue + degrees),
+            self._saturation,
+            self._lightness,
+        )
+
+    def saturate(self, amount: Float64) raises -> Hsl:
+        """Move fractionally toward full saturation; 0 is identity and 1 is full."""
+        _validate_channel(amount, "saturate amount")
+        return Self._from_validated(
+            self._hue,
+            self._saturation + (1.0 - self._saturation) * amount,
+            self._lightness,
+        )
+
+    def desaturate(self, amount: Float64) raises -> Hsl:
+        """Move fractionally toward gray; 0 is identity and 1 is gray."""
+        _validate_channel(amount, "desaturate amount")
+        return Self._from_validated(
+            self._hue,
+            self._saturation * (1.0 - amount),
+            self._lightness,
+        )
 
     def to_srgb(self) -> Srgb:
         """Convert to gamma-encoded sRGB; achromatic values become gray."""

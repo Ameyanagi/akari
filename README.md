@@ -57,12 +57,16 @@ from std.collections import List
 def main() raises:
     var value_color = Colormap.VIRIDIS.at(0.72)
     var series_color = Palette.tableau10().cycle(11)
-    var stops: List[RGBA] = [RGBA.WHITE, RGBA(0.14, 0.42, 0.81)]
+    var stops: List[RGBA] = [RGBA.WHITE, RGBA.from_hex("#246bcf")]
     var brand = Gradient(stops^)
-    print(value_color.hex())
+    print(value_color.hex_rgb())
     print(series_color.hex())
-    print(brand.at(0.5).hex())
+    print(brand.at(0.5).hex_rgb())
 ```
+
+Colors also support space-aware mixing such as `a.mix(b, 0.5, MixSpace.OKLAB)`,
+`lighten`/`darken`/`saturate`/`desaturate`/`shift_hue`, and `to_srgb()`/`to_rgba()`
+bridging into the conversion graph.
 
 For the interpolation choice, see the `MixSpace` docstring: `STORED` for data
 fidelity, `LINEAR` for physical light, and `OKLAB` for looks. Curated palettes

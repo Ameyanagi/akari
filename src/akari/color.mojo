@@ -4,6 +4,10 @@ from std.builtin.comparable import Equatable
 from std.io import Writable, Writer
 from std.memory import bitcast
 
+from .mix_space import MixSpace
+from .oklab import Oklab
+from .rgb_spaces import LinearSrgb, Srgb
+
 
 comptime _FLOAT64_FRACTION_MASK = UInt64(0x000F_FFFF_FFFF_FFFF)
 comptime _FLOAT64_EXPONENT_MASK = UInt64(0x7FF)
@@ -91,6 +95,26 @@ def _append_hex_byte(mut result: String, byte: UInt8):
     result += String(_HEX_DIGITS[byte = low : low + 1])
 
 
+def _hex_digit_value(byte: UInt8) -> Int:
+    """Return an ASCII hexadecimal digit's value, or -1 when invalid."""
+    var value = Int(byte)
+    if value >= 0x30 and value <= 0x39:
+        return value - 0x30
+    if value >= 0x61 and value <= 0x66:
+        return value - 0x61 + 10
+    if value >= 0x41 and value <= 0x46:
+        return value - 0x41 + 10
+    return -1
+
+
+def _invalid_hex_message(text: String) -> String:
+    return String(
+        'hex color must be #rgb, #rrggbb, or #rrggbbaa; got "',
+        text,
+        '"',
+    )
+
+
 struct _Validated:
     def __init__(out self):
         pass
@@ -151,6 +175,62 @@ struct RGBA(Copyable, Equatable, ImplicitlyCopyable, Writable):
             _normalized_from_byte(alpha),
         )
 
+    @staticmethod
+    def from_hex(text: String) raises -> RGBA:
+        """Import ``#rgb``, ``#rrggbb``, or ``#rrggbbaa`` stored-space bytes.
+
+        CSS shorthand expands each digit to a repeated byte. Any other shape or
+        non-hexadecimal byte is rejected.
+        """
+        var length = text.byte_length()
+        if length != 4 and length != 7 and length != 9:
+            raise Error(_invalid_hex_message(text))
+
+        var red = 0
+        var green = 0
+        var blue = 0
+        var alpha = 255
+        var byte_index = 0
+        for byte in text.bytes():
+            if byte_index == 0:
+                if byte != UInt8(0x23):
+                    raise Error(_invalid_hex_message(text))
+            else:
+                var digit = _hex_digit_value(byte)
+                if digit < 0:
+                    raise Error(_invalid_hex_message(text))
+                if length == 4:
+                    if byte_index == 1:
+                        red = digit * 17
+                    elif byte_index == 2:
+                        green = digit * 17
+                    else:
+                        blue = digit * 17
+                elif byte_index == 1:
+                    red = digit * 16
+                elif byte_index == 2:
+                    red += digit
+                elif byte_index == 3:
+                    green = digit * 16
+                elif byte_index == 4:
+                    green += digit
+                elif byte_index == 5:
+                    blue = digit * 16
+                elif byte_index == 6:
+                    blue += digit
+                elif byte_index == 7:
+                    alpha = digit * 16
+                else:
+                    alpha += digit
+            byte_index += 1
+
+        return Self._from_validated(
+            _normalized_from_byte(UInt8(red)),
+            _normalized_from_byte(UInt8(green)),
+            _normalized_from_byte(UInt8(blue)),
+            _normalized_from_byte(UInt8(alpha)),
+        )
+
     def __init__(
         out self,
         red: Float64,
@@ -191,6 +271,14 @@ struct RGBA(Copyable, Equatable, ImplicitlyCopyable, Writable):
     def alpha(self) -> Float64:
         return self._alpha
 
+    def to_srgb(self) -> Srgb:
+        """Reinterpret stored RGB as gamma-encoded sRGB and drop alpha.
+
+        This is non-raising because construction already validated the stored
+        components.
+        """
+        return Srgb._from_validated(self._red, self._green, self._blue)
+
     def stored_bytes(self) -> SIMD[DType.uint8, 4]:
         """Export bytes using stored-space quantization and no transfer function.
 
@@ -218,8 +306,22 @@ struct RGBA(Copyable, Equatable, ImplicitlyCopyable, Writable):
             _append_hex_byte(result, stored[index])
         return result^
 
+    def hex_rgb(self) -> String:
+        """Return CSS-style ``#rrggbb`` with strict stored-space quantization.
+
+        Alpha is not emitted; use ``hex()`` when alpha matters.
+        """
+        var result = String("#")
+        var stored = self.stored_bytes()
+        for index in range(3):
+            _append_hex_byte(result, stored[index])
+        return result^
+
     def lerp(self, other: Self, amount: Float64) raises -> Self:
-        """Interpolate components, rejecting an amount outside ``[0, 1]``."""
+        """Interpolate components, rejecting an amount outside ``[0, 1]``.
+
+        This is equivalent to ``mix(other, amount, MixSpace.STORED)``.
+        """
         _validate_channel(amount, "interpolation amount")
         var remaining = 1.0 - amount
         return Self._from_validated(
@@ -228,6 +330,16 @@ struct RGBA(Copyable, Equatable, ImplicitlyCopyable, Writable):
             self._blue * remaining + other._blue * amount,
             self._alpha * remaining + other._alpha * amount,
         )
+
+    def mix(
+        self,
+        other: Self,
+        amount: Float64,
+        space: MixSpace = MixSpace.STORED,
+    ) raises -> Self:
+        """Mix in the chosen space, rejecting an amount outside ``[0, 1]``."""
+        _validate_channel(amount, "interpolation amount")
+        return _mix_rgba(self, other, amount, space)
 
     def __eq__(self, other: Self) -> Bool:
         return (
@@ -254,3 +366,49 @@ struct RGBA(Copyable, Equatable, ImplicitlyCopyable, Writable):
             self._alpha,
             ")",
         )
+
+
+def _mix_rgba(a: RGBA, b: RGBA, fraction: Float64, space: MixSpace) -> RGBA:
+    """Mix trusted RGBA values using the selected color-space semantics."""
+    var remaining = 1.0 - fraction
+    var alpha = a.alpha() * remaining + b.alpha() * fraction
+    if space == MixSpace.STORED:
+        return RGBA._from_validated(
+            a.red() * remaining + b.red() * fraction,
+            a.green() * remaining + b.green() * fraction,
+            a.blue() * remaining + b.blue() * fraction,
+            alpha,
+        )
+
+    var encoded_a = Srgb._from_validated(a.red(), a.green(), a.blue())
+    var encoded_b = Srgb._from_validated(b.red(), b.green(), b.blue())
+    var linear_a = encoded_a.to_linear()
+    var linear_b = encoded_b.to_linear()
+    if space == MixSpace.LINEAR:
+        var mixed_linear = LinearSrgb._from_validated(
+            linear_a.red() * remaining + linear_b.red() * fraction,
+            linear_a.green() * remaining + linear_b.green() * fraction,
+            linear_a.blue() * remaining + linear_b.blue() * fraction,
+        )
+        var mixed_encoded = mixed_linear.to_encoded()
+        return RGBA._from_validated(
+            mixed_encoded.red(),
+            mixed_encoded.green(),
+            mixed_encoded.blue(),
+            alpha,
+        )
+
+    var oklab_a = linear_a.to_oklab()
+    var oklab_b = linear_b.to_oklab()
+    var mixed_oklab = Oklab._from_validated(
+        oklab_a.lightness() * remaining + oklab_b.lightness() * fraction,
+        oklab_a.a() * remaining + oklab_b.a() * fraction,
+        oklab_a.b() * remaining + oklab_b.b() * fraction,
+    )
+    var mixed_encoded = mixed_oklab.to_linear_srgb().to_encoded()
+    return RGBA._from_validated(
+        mixed_encoded.red(),
+        mixed_encoded.green(),
+        mixed_encoded.blue(),
+        alpha,
+    )
