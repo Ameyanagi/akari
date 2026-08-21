@@ -28,3 +28,8 @@ explicit typed values, produce deterministic outputs for deterministic inputs,
 and report invalid state rather than silently replacing it with a default.
 I/O, clocks, randomness, terminal queries, filesystem access, and accelerator
 selection stay at explicit effect or backend boundaries.
+
+Mojo 1.0 does not make underscore-prefixed struct fields private. Color
+constructors validate their inputs and operations trust the resulting values.
+Direct field mutation is out of contract; validated types expose one explicit
+raising checkpoint for callers doing unusual low-level work.

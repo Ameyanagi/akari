@@ -1,6 +1,10 @@
-from akari._scaffold import scaffold_name
-from std.testing import assert_equal
+from akari import RGBA
+from std.testing import assert_true
 
 
 def main() raises:
-    assert_equal(scaffold_name(), "akari")
+    var midpoint = RGBA(0.0, 0.2, 1.0, 0.0).lerp(RGBA(1.0, 0.6, 0.0, 1.0), 0.5)
+    assert_true(midpoint.red() == 0.5)
+    assert_true(midpoint.green() == 0.4)
+    assert_true(midpoint.blue() == 0.5)
+    assert_true(midpoint.alpha() == 0.5)
