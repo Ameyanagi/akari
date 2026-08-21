@@ -69,6 +69,13 @@ def _assert_hsv_fixture(
 
 
 def test_constructor_boundaries() raises:
+    with assert_raises(
+        contains=(
+            "red must be finite and within [0, 1]; got 255.0; for 0-255 byte components"
+            " use from_stored_bytes"
+        )
+    ):
+        _ = Srgb(255.0, 0.0, 0.0)
     with assert_raises(contains="red must be finite and within [0, 1]; got nan"):
         _ = Srgb(Float64("nan"), 0.0, 0.0)
     with assert_raises(contains="green must be finite and within [0, 1]; got inf"):
@@ -167,7 +174,12 @@ def test_validate_rejects_direct_mutation() raises:
         encoded_red.validate()
     var encoded_green = Srgb(0.1, 0.2, 0.3)
     encoded_green._green = 2.0
-    with assert_raises(contains="green must be finite and within [0, 1]; got 2.0"):
+    with assert_raises(
+        contains=(
+            "green must be finite and within [0, 1]; got 2.0; for 0-255 byte components"
+            " use from_stored_bytes"
+        )
+    ):
         encoded_green.validate()
     var encoded_blue = Srgb(0.1, 0.2, 0.3)
     encoded_blue._blue = -1.0
@@ -184,7 +196,12 @@ def test_validate_rejects_direct_mutation() raises:
         linear_green.validate()
     var linear_blue = LinearSrgb(0.1, 0.2, 0.3)
     linear_blue._blue = 2.0
-    with assert_raises(contains="blue must be finite and within [0, 1]; got 2.0"):
+    with assert_raises(
+        contains=(
+            "blue must be finite and within [0, 1]; got 2.0; for 0-255 byte components"
+            " use from_stored_bytes"
+        )
+    ):
         linear_blue.validate()
 
     var hsl_hue = Hsl(30.0, 0.5, 0.5)

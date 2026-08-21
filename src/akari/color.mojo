@@ -16,6 +16,20 @@ def _validate_channel(value: Float64, name: String) raises:
         raise Error(name + " must be finite and within [0, 1]; got " + String(value))
 
 
+def _validate_color_channel(value: Float64, name: String) raises:
+    """Validate a color component and point byte-scale inputs to the importer."""
+    if value != value or value < 0.0 or value > 1.0:
+        var message = name + " must be finite and within [0, 1]; got " + String(value)
+        if (
+            value == value
+            and value > 1.0
+            and value <= 255.0
+            and value == Float64(Int(value))
+        ):
+            message += "; for 0-255 byte components use from_stored_bytes"
+        raise Error(message)
+
+
 def _normalized_from_byte(value: UInt8) -> Float64:
     """Normalize one stored byte by correctly rounded binary64 division."""
     return Float64(value) / 255.0
@@ -105,10 +119,10 @@ struct RGBA(Copyable, Equatable, ImplicitlyCopyable, Writable):
         blue: Float64,
         alpha: Float64 = 1.0,
     ) raises:
-        _validate_channel(red, "red")
-        _validate_channel(green, "green")
-        _validate_channel(blue, "blue")
-        _validate_channel(alpha, "alpha")
+        _validate_color_channel(red, "red")
+        _validate_color_channel(green, "green")
+        _validate_color_channel(blue, "blue")
+        _validate_color_channel(alpha, "alpha")
         self._red = red
         self._green = green
         self._blue = blue
@@ -160,10 +174,10 @@ struct RGBA(Copyable, Equatable, ImplicitlyCopyable, Writable):
 
     def validate(self) raises:
         """Validate all stored components explicitly."""
-        _validate_channel(self._red, "red")
-        _validate_channel(self._green, "green")
-        _validate_channel(self._blue, "blue")
-        _validate_channel(self._alpha, "alpha")
+        _validate_color_channel(self._red, "red")
+        _validate_color_channel(self._green, "green")
+        _validate_color_channel(self._blue, "blue")
+        _validate_color_channel(self._alpha, "alpha")
 
     def red(self) -> Float64:
         return self._red

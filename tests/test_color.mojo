@@ -56,6 +56,34 @@ def test_invalid_components_and_amounts_raise() raises:
         _ = black.lerp(transparent, Float64("inf"))
 
 
+def test_byte_scale_components_point_to_stored_byte_import() raises:
+    with assert_raises(
+        contains=(
+            "red must be finite and within [0, 1]; got 255.0; for 0-255 byte components"
+            " use from_stored_bytes"
+        )
+    ):
+        _ = RGBA(255.0, 128.0, 0.0)
+    with assert_raises(
+        contains=(
+            "alpha must be finite and within [0, 1]; got 42.0; for 0-255 byte"
+            " components use from_stored_bytes"
+        )
+    ):
+        _ = RGBA(0.0, 0.0, 0.0, 42.0)
+    with assert_raises(contains="red must be finite and within [0, 1]; got 1.5"):
+        _ = RGBA(1.5, 0.0, 0.0)
+    with assert_raises(
+        contains=(
+            "red must be finite and within [0, 1]; got 2.0; for 0-255 byte components"
+            " use from_stored_bytes"
+        )
+    ):
+        _ = RGBA(2.0, 0.0, 0.0)
+    with assert_raises(contains="red must be finite and within [0, 1]; got 256.0"):
+        _ = RGBA(256.0, 0.0, 0.0)
+
+
 def test_validate_rejects_mutated_storage() raises:
     var corrupted = RGBA(0.1, 0.2, 0.3, 0.4)
     corrupted._red = Float64("nan")
@@ -64,7 +92,12 @@ def test_validate_rejects_mutated_storage() raises:
 
     var invalid_alpha = RGBA.BLACK
     invalid_alpha._alpha = 2.0
-    with assert_raises(contains="alpha must be finite and within [0, 1]; got 2.0"):
+    with assert_raises(
+        contains=(
+            "alpha must be finite and within [0, 1]; got 2.0; for 0-255 byte components"
+            " use from_stored_bytes"
+        )
+    ):
         invalid_alpha.validate()
 
 

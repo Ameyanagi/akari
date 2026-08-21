@@ -9,6 +9,7 @@ from .color import (
     _append_hex_byte,
     _byte_from_normalized,
     _validate_channel,
+    _validate_color_channel,
 )
 from .oklab import Oklab
 
@@ -131,9 +132,9 @@ struct Srgb(Copyable, Equatable, Writable):
     var _blue: Float64
 
     def __init__(out self, red: Float64, green: Float64, blue: Float64) raises:
-        _validate_channel(red, "red")
-        _validate_channel(green, "green")
-        _validate_channel(blue, "blue")
+        _validate_color_channel(red, "red")
+        _validate_color_channel(green, "green")
+        _validate_color_channel(blue, "blue")
         self._red = red
         self._green = green
         self._blue = blue
@@ -156,9 +157,9 @@ struct Srgb(Copyable, Equatable, Writable):
 
     def validate(self) raises:
         """Validate all stored components explicitly."""
-        _validate_channel(self._red, "red")
-        _validate_channel(self._green, "green")
-        _validate_channel(self._blue, "blue")
+        _validate_color_channel(self._red, "red")
+        _validate_color_channel(self._green, "green")
+        _validate_color_channel(self._blue, "blue")
 
     def red(self) -> Float64:
         return self._red
@@ -249,9 +250,9 @@ struct LinearSrgb(Copyable, Equatable, Writable):
     var _blue: Float64
 
     def __init__(out self, red: Float64, green: Float64, blue: Float64) raises:
-        _validate_channel(red, "red")
-        _validate_channel(green, "green")
-        _validate_channel(blue, "blue")
+        _validate_color_channel(red, "red")
+        _validate_color_channel(green, "green")
+        _validate_color_channel(blue, "blue")
         self._red = red
         self._green = green
         self._blue = blue
@@ -274,9 +275,9 @@ struct LinearSrgb(Copyable, Equatable, Writable):
 
     def validate(self) raises:
         """Validate all stored components explicitly."""
-        _validate_channel(self._red, "red")
-        _validate_channel(self._green, "green")
-        _validate_channel(self._blue, "blue")
+        _validate_color_channel(self._red, "red")
+        _validate_color_channel(self._green, "green")
+        _validate_color_channel(self._blue, "blue")
 
     def red(self) -> Float64:
         return self._red
