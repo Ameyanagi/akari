@@ -17,7 +17,7 @@ from ._colormap_tables import (
     _TURBO_TABLE,
     _VIRIDIS_TABLE,
 )
-from .color import RGBA, _byte_from_normalized, _normalized_from_byte
+from .color import RGBA, _normalized_from_byte
 
 
 def _clamp_colormap_coordinate(value: Float64) -> Float64:
@@ -60,31 +60,13 @@ def _interpolate_table(
 def _interpolate_table_bytes(
     table: Array[SIMD[DType.uint8, 4], 256], coordinate: Float64
 ) -> SIMD[DType.uint8, 4]:
-    """Interpolate one clamped coordinate directly into strict stored bytes."""
-    var position = coordinate * 255.0
-    var table_index = Int(floor(position))
-    var fraction = position - Float64(table_index)
-    var current = table[table_index]
-    if table_index == 255 or fraction == 0.0:
-        return current
+    """Interpolate and quantize through the public scalar numeric path.
 
-    var following = table[table_index + 1]
-    var remaining = 1.0 - fraction
-    return SIMD[DType.uint8, 4](
-        _byte_from_normalized(
-            _normalized_from_byte(current[0]) * remaining
-            + _normalized_from_byte(following[0]) * fraction
-        ),
-        _byte_from_normalized(
-            _normalized_from_byte(current[1]) * remaining
-            + _normalized_from_byte(following[1]) * fraction
-        ),
-        _byte_from_normalized(
-            _normalized_from_byte(current[2]) * remaining
-            + _normalized_from_byte(following[2]) * fraction
-        ),
-        255,
-    )
+    Keeping one interpolation expression prevents target-specific contraction
+    from moving an exact half-step to the opposite side of byte quantization.
+    ``RGBA`` is a stack value, so this remains allocation-free.
+    """
+    return _interpolate_table(table, coordinate).stored_bytes()
 
 
 def _normalization_width(lo: Float64, hi: Float64) raises -> Float64:
