@@ -20,8 +20,14 @@ and uses semantic versioning after the first public release.
   cycling.
 - Evenly spaced custom gradients with endpoint-exact interpolation, sampling,
   and alpha support.
+- Nominal `PremultipliedRGBA` values and explicit conversion to and from
+  straight-alpha `RGBA`, including a canonical transparent-black policy.
 
 ### Changed
 
 - Trust constructor-validated color storage during read-only operations; callers
   can request an explicit validation checkpoint after unusual direct mutation.
+- Use a measured inline scalar candidate quantizer with exact directed-threshold
+  correction for direct batch colormap byte output.
+- Preserve exact scalar-division normalization for finite colormap bounds,
+  including tiny widths, and validate bounds before allocating batch outputs.

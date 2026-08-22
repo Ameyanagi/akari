@@ -110,6 +110,41 @@ def test_lerp_endpoints_midpoint_and_invalid_amounts() raises:
         _ = start.lerp(end, Float64("nan"))
 
 
+def test_lighten_and_darken_fractional_endpoints_preserve_opponents() raises:
+    var color = Oklab(0.25, 0.1, -0.2)
+    assert_true(color.lighten(0.0) == color)
+    var half_light = color.lighten(0.5)
+    assert_true(half_light.lightness() == 0.625)
+    assert_true(half_light.a() == color.a())
+    assert_true(half_light.b() == color.b())
+    var fully_light = color.lighten(1.0)
+    assert_true(fully_light.lightness() == 1.0)
+    assert_true(fully_light.a() == color.a())
+    assert_true(fully_light.b() == color.b())
+
+    assert_true(color.darken(0.0) == color)
+    var half_dark = color.darken(0.5)
+    assert_true(half_dark.lightness() == 0.125)
+    assert_true(half_dark.a() == color.a())
+    assert_true(half_dark.b() == color.b())
+    var fully_dark = color.darken(1.0)
+    assert_true(fully_dark.lightness() == 0.0)
+    assert_true(fully_dark.a() == color.a())
+    assert_true(fully_dark.b() == color.b())
+
+
+def test_lighten_and_darken_reject_invalid_amounts() raises:
+    var color = Oklab(0.25, 0.1, -0.2)
+    with assert_raises(
+        contains="lighten amount must be finite and within [0, 1]; got 1.5"
+    ):
+        _ = color.lighten(1.5)
+    with assert_raises(
+        contains="darken amount must be finite and within [0, 1]; got nan"
+    ):
+        _ = color.darken(Float64("nan"))
+
+
 def test_gamut_clipping_and_string_representation() raises:
     var clipped = Oklab(0.7, 1.0, 1.0).to_linear_srgb()
     assert_true(clipped.red() >= 0.0 and clipped.red() <= 1.0)

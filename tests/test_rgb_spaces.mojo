@@ -69,6 +69,13 @@ def _assert_hsv_fixture(
 
 
 def test_constructor_boundaries() raises:
+    with assert_raises(
+        contains=(
+            "red must be finite and within [0, 1]; got 255.0; for 0-255 byte components"
+            " use from_stored_bytes"
+        )
+    ):
+        _ = Srgb(255.0, 0.0, 0.0)
     with assert_raises(contains="red must be finite and within [0, 1]; got nan"):
         _ = Srgb(Float64("nan"), 0.0, 0.0)
     with assert_raises(contains="green must be finite and within [0, 1]; got inf"):
@@ -167,7 +174,12 @@ def test_validate_rejects_direct_mutation() raises:
         encoded_red.validate()
     var encoded_green = Srgb(0.1, 0.2, 0.3)
     encoded_green._green = 2.0
-    with assert_raises(contains="green must be finite and within [0, 1]; got 2.0"):
+    with assert_raises(
+        contains=(
+            "green must be finite and within [0, 1]; got 2.0; for 0-255 byte components"
+            " use from_stored_bytes"
+        )
+    ):
         encoded_green.validate()
     var encoded_blue = Srgb(0.1, 0.2, 0.3)
     encoded_blue._blue = -1.0
@@ -184,7 +196,12 @@ def test_validate_rejects_direct_mutation() raises:
         linear_green.validate()
     var linear_blue = LinearSrgb(0.1, 0.2, 0.3)
     linear_blue._blue = 2.0
-    with assert_raises(contains="blue must be finite and within [0, 1]; got 2.0"):
+    with assert_raises(
+        contains=(
+            "blue must be finite and within [0, 1]; got 2.0; for 0-255 byte components"
+            " use from_stored_bytes"
+        )
+    ):
         linear_blue.validate()
 
     var hsl_hue = Hsl(30.0, 0.5, 0.5)
@@ -227,6 +244,50 @@ def test_hue_normalization() raises:
     assert_true(Hsv(360.0, 0.5, 0.5) == Hsv(0.0, 0.5, 0.5))
     assert_true(Hsv(720.0, 0.5, 0.5) == Hsv(0.0, 0.5, 0.5))
     assert_true(Hsv(-90.0, 0.5, 0.5) == Hsv(270.0, 0.5, 0.5))
+
+
+def test_hsl_manipulation_verbs_and_validation() raises:
+    var color = Hsl(350.0, 0.25, 0.6)
+    assert_true(color.shift_hue(20.0).hue() == 10.0)
+    assert_true(color.shift_hue(0.0) == color)
+    with assert_raises(contains="hue shift must be finite; got inf"):
+        _ = color.shift_hue(Float64("inf"))
+
+    assert_true(color.saturate(0.0) == color)
+    var half_saturated = color.saturate(0.5)
+    assert_true(half_saturated.hue() == color.hue())
+    assert_true(half_saturated.saturation() == 0.625)
+    assert_true(half_saturated.lightness() == color.lightness())
+    assert_true(color.saturate(1.0).saturation() == 1.0)
+
+    assert_true(color.desaturate(0.0) == color)
+    var half_desaturated = color.desaturate(0.5)
+    assert_true(half_desaturated.hue() == color.hue())
+    assert_true(half_desaturated.saturation() == 0.125)
+    assert_true(half_desaturated.lightness() == color.lightness())
+    assert_true(color.desaturate(1.0).saturation() == 0.0)
+
+    with assert_raises(
+        contains="saturate amount must be finite and within [0, 1]; got 1.5"
+    ):
+        _ = color.saturate(1.5)
+    with assert_raises(
+        contains="desaturate amount must be finite and within [0, 1]; got -0.1"
+    ):
+        _ = color.desaturate(-0.1)
+
+
+def test_srgb_manipulation_verbs_route_through_natural_spaces() raises:
+    var red = Srgb(1.0, 0.0, 0.0)
+    assert_true(red.shift_hue(120.0) == Srgb(0.0, 1.0, 0.0))
+
+    var neutral = Srgb(0.25, 0.25, 0.25)
+    _assert_srgb_near(neutral.lighten(0.0), neutral, 1e-6)
+    _assert_srgb_near(neutral.darken(0.0), neutral, 1e-6)
+    _assert_srgb_near(neutral.lighten(1.0), Srgb(1.0, 1.0, 1.0), 1e-6)
+
+    assert_true(red.saturate(0.0) == red)
+    assert_true(red.desaturate(1.0) == Srgb(0.5, 0.5, 0.5))
 
 
 def test_achromatic_conventions() raises:

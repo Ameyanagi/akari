@@ -75,6 +75,8 @@ downstream consumers depend on Akari, never the reverse.
 
 ## v0.2 — Usability
 
+- [x] Add nominal straight/premultiplied alpha conversion with a canonical
+  zero-alpha policy and explicit stored-byte meaning.
 - Add ergonomic constructors only when v0.1 usage shows repeated friction.
 - Expand palette composition and examples without adding plotting semantics.
 - Submit the first modular-community recipe after Akari is useful on its own.

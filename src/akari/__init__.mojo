@@ -1,6 +1,6 @@
 """Dependency-free color values for Mojo."""
 
-from .color import RGBA
+from .color import PremultipliedRGBA, RGBA
 from .colormap import Colormap
 from .gradient import Gradient
 from .mix_space import MixSpace

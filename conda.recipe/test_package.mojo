@@ -1,4 +1,4 @@
-from akari import RGBA
+from akari import PremultipliedRGBA, RGBA
 from std.testing import assert_true
 
 
@@ -8,3 +8,5 @@ def main() raises:
     assert_true(midpoint.green() == 0.4)
     assert_true(midpoint.blue() == 0.5)
     assert_true(midpoint.alpha() == 0.5)
+    var premultiplied: PremultipliedRGBA = midpoint.premultiplied()
+    assert_true(premultiplied.straight() == midpoint)

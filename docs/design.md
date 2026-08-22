@@ -37,6 +37,48 @@ rounding, range, mutation, and color-space boundary in [the numeric conversion
 policy](numeric-conversion.md). Quantization never implies a transfer function,
 and clamping is never hidden inside a strict conversion.
 
+## Batch colormap mapping
+
+`Colormap.map_into` and `Colormap.map_bytes_into` are the allocation-free batch
+entry points. They require equal-length input and output spans, validate finite
+ordered bounds and the derived normalization width once, select one generated
+table once, and then reuse that table for the full kernel. The allocating `map`
+and `map_bytes` conveniences validate bounds before allocating their output and
+then share the same internal kernels.
+
+The normative normalization expression is `(value - lo) / (hi - lo)`, including
+for tiny finite widths. An exact reciprocal multiplication is selected only when
+the width is a binary power of two and its reciprocal remains finite; in that
+case it is bit-equivalent to division. All other widths use the scalar division
+expression so batch results retain exact scalar semantics.
+
+NaN is missing data rather than an endpoint coordinate. Batch callers can pass
+an explicit `missing_color`; omitting it retains the original low-endpoint color
+for source and behavioral compatibility. Positive and negative infinity remain
+ordered extremes and clamp to the high and low endpoints respectively.
+
+The Mojo 1.0 CPU kernel remains scalar because table interpolation needs
+data-dependent gathers. Direct byte output uses a measured scalar candidate
+quantizer: a cheap rounded-byte estimate followed by exact directed-threshold
+correction at its adjacent boundary. The quantizer is forced inline because an
+out-of-line call for each RGB component was a measured hotspot. Independent
+`Int256` tests cover all 255 threshold neighbors, and table tests bit-search and
+bracket every actual scalar output-byte transition before checking the direct
+byte kernel. The benchmark asserts full-buffer equality between the public color
+and byte kernels before every timed size.
+
+## Alpha representation
+
+`RGBA` is straight alpha. `PremultipliedRGBA` is a distinct nominal value whose
+RGB components cannot exceed alpha. `RGBA.premultiplied()` multiplies stored
+numeric RGB by alpha, while `PremultipliedRGBA.straight()` divides by nonzero
+alpha. Zero alpha canonicalizes to transparent black because premultiplication
+cannot preserve hidden straight RGB.
+
+Neither conversion applies an RGB transfer function. A renderer that requires
+linear-light premultiplication must convert RGB to a linear representation
+before using this transfer-agnostic numeric operation.
+
 ## Nominal color spaces
 
 Encoded sRGB, linear-light sRGB, HSL, and HSV are distinct nominal values. This
