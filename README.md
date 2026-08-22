@@ -132,8 +132,8 @@ documented.
 
 ## Package
 
-The Mojo import is `akari`. The eventual Conda distribution is
-`mojo-akari`. Source lives under `src/akari/`, whose
+The Mojo import is `akari`. The Conda distribution is `mojo-akari`. Source
+lives under `src/akari/`, whose
 `__init__.mojo` defines the package boundary.
 
 The public slice covers continuous data colors, categorical series colors, and
