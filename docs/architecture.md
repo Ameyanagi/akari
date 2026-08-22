@@ -21,6 +21,10 @@ generated tables, platform details, and backend implementations remain in
 their owning modules. Generic Mojo-native buffers, spans, strings, and
 collections are preferred over an ecosystem-specific universal container.
 
+The root alpha boundary is nominal: `RGBA` means straight alpha and
+`PremultipliedRGBA` means premultiplied numeric RGB. Downstream renderers choose
+the representation they require instead of relying on an untyped policy flag.
+
 ## Data flow
 
 Input validation occurs at the public boundary. Internal layers operate on

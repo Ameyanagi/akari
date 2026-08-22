@@ -4,6 +4,7 @@ from std.builtin.comparable import Equatable
 from std.collections import List
 from std.io import Writable, Writer
 from std.math import floor
+from std.memory import bitcast
 from std.utils.numerics import isfinite
 
 from ._colormap_tables import (
@@ -56,7 +57,37 @@ def _interpolate_table(
     )
 
 
-def _validate_bounds(lo: Float64, hi: Float64) raises:
+def _interpolate_table_bytes(
+    table: Array[SIMD[DType.uint8, 4], 256], coordinate: Float64
+) -> SIMD[DType.uint8, 4]:
+    """Interpolate one clamped coordinate directly into strict stored bytes."""
+    var position = coordinate * 255.0
+    var table_index = Int(floor(position))
+    var fraction = position - Float64(table_index)
+    var current = table[table_index]
+    if table_index == 255 or fraction == 0.0:
+        return current
+
+    var following = table[table_index + 1]
+    var remaining = 1.0 - fraction
+    return SIMD[DType.uint8, 4](
+        _byte_from_normalized(
+            _normalized_from_byte(current[0]) * remaining
+            + _normalized_from_byte(following[0]) * fraction
+        ),
+        _byte_from_normalized(
+            _normalized_from_byte(current[1]) * remaining
+            + _normalized_from_byte(following[1]) * fraction
+        ),
+        _byte_from_normalized(
+            _normalized_from_byte(current[2]) * remaining
+            + _normalized_from_byte(following[2]) * fraction
+        ),
+        255,
+    )
+
+
+def _normalization_width(lo: Float64, hi: Float64) raises -> Float64:
     if not isfinite(lo) or not isfinite(hi) or lo >= hi:
         raise Error(
             String(
@@ -66,14 +97,173 @@ def _validate_bounds(lo: Float64, hi: Float64) raises:
                 hi,
             )
         )
+    var width = hi - lo
+    if not isfinite(width):
+        raise Error(
+            String(
+                "normalization width must be finite; got hi - lo=",
+                width,
+                " for lo=",
+                lo,
+                ", hi=",
+                hi,
+                "; choose closer finite bounds",
+            )
+        )
+    return width
+
+
+def _validate_result_length(value_count: Int, result_count: Int) raises:
+    if value_count != result_count:
+        raise Error(
+            String(
+                "values and result buffers must have equal length; ",
+                "got len(values)=",
+                value_count,
+                ", len(results)=",
+                result_count,
+                "; resize results to ",
+                value_count,
+            )
+        )
+
+
+def _has_exact_binary_reciprocal(width: Float64) -> Bool:
+    """Return whether division by ``width`` is exact binary exponent scaling."""
+    var bits = bitcast[DType.uint64](width)
+    var exponent = (bits >> 52) & UInt64(0x7FF)
+    var fraction = bits & UInt64(0x000F_FFFF_FFFF_FFFF)
+    if exponent != UInt64(0):
+        return fraction == UInt64(0)
+    if fraction == UInt64(0) or (fraction & (fraction - UInt64(1))) != UInt64(0):
+        return False
+    return isfinite(1.0 / width)
+
+
+def _map_into_table_scaled(
+    table: Array[SIMD[DType.uint8, 4], 256],
+    values: Span[Float64, _],
+    lo: Float64,
+    inverse_width: Float64,
+    results: Span[mut=True, RGBA, _],
+    missing_color: Optional[RGBA],
+):
+    """Map through an exact binary reciprocal without changing division bits."""
+    var missing = _interpolate_table(table, 0.0)
+    if missing_color:
+        missing = missing_color.value()
+
+    for value_index in range(len(values)):
+        var value = values[value_index]
+        if value != value:
+            results[value_index] = missing
+            continue
+        var coordinate = _clamp_colormap_coordinate((value - lo) * inverse_width)
+        results[value_index] = _interpolate_table(table, coordinate)
+
+
+def _map_into_table_divided(
+    table: Array[SIMD[DType.uint8, 4], 256],
+    values: Span[Float64, _],
+    lo: Float64,
+    width: Float64,
+    results: Span[mut=True, RGBA, _],
+    missing_color: Optional[RGBA],
+):
+    """Map with the scalar reference normalization expression."""
+    var missing = _interpolate_table(table, 0.0)
+    if missing_color:
+        missing = missing_color.value()
+
+    for value_index in range(len(values)):
+        var value = values[value_index]
+        if value != value:
+            results[value_index] = missing
+            continue
+        var coordinate = _clamp_colormap_coordinate((value - lo) / width)
+        results[value_index] = _interpolate_table(table, coordinate)
+
+
+def _map_bytes_into_table_scaled(
+    table: Array[SIMD[DType.uint8, 4], 256],
+    values: Span[Float64, _],
+    lo: Float64,
+    inverse_width: Float64,
+    results: Span[mut=True, SIMD[DType.uint8, 4], _],
+    missing_color: Optional[RGBA],
+):
+    """Map bytes through an exact binary reciprocal."""
+    var missing = table[0]
+    if missing_color:
+        missing = missing_color.value().stored_bytes()
+
+    for value_index in range(len(values)):
+        var value = values[value_index]
+        if value != value:
+            results[value_index] = missing
+            continue
+        var coordinate = _clamp_colormap_coordinate((value - lo) * inverse_width)
+        results[value_index] = _interpolate_table_bytes(table, coordinate)
+
+
+def _map_bytes_into_table_divided(
+    table: Array[SIMD[DType.uint8, 4], 256],
+    values: Span[Float64, _],
+    lo: Float64,
+    width: Float64,
+    results: Span[mut=True, SIMD[DType.uint8, 4], _],
+    missing_color: Optional[RGBA],
+):
+    """Map bytes with the scalar reference normalization expression."""
+    var missing = table[0]
+    if missing_color:
+        missing = missing_color.value().stored_bytes()
+
+    for value_index in range(len(values)):
+        var value = values[value_index]
+        if value != value:
+            results[value_index] = missing
+            continue
+        var coordinate = _clamp_colormap_coordinate((value - lo) / width)
+        results[value_index] = _interpolate_table_bytes(table, coordinate)
+
+
+def _map_into_normalized(
+    table: Array[SIMD[DType.uint8, 4], 256],
+    values: Span[Float64, _],
+    lo: Float64,
+    width: Float64,
+    results: Span[mut=True, RGBA, _],
+    missing_color: Optional[RGBA],
+):
+    if _has_exact_binary_reciprocal(width):
+        _map_into_table_scaled(table, values, lo, 1.0 / width, results, missing_color)
+    else:
+        _map_into_table_divided(table, values, lo, width, results, missing_color)
+
+
+def _map_bytes_into_normalized(
+    table: Array[SIMD[DType.uint8, 4], 256],
+    values: Span[Float64, _],
+    lo: Float64,
+    width: Float64,
+    results: Span[mut=True, SIMD[DType.uint8, 4], _],
+    missing_color: Optional[RGBA],
+):
+    if _has_exact_binary_reciprocal(width):
+        _map_bytes_into_table_scaled(
+            table, values, lo, 1.0 / width, results, missing_color
+        )
+    else:
+        _map_bytes_into_table_divided(table, values, lo, width, results, missing_color)
 
 
 struct Colormap(Copyable, Equatable, ImplicitlyCopyable, Writable):
     """An Int-backed handle to one immutable generated colormap table.
 
     Keeping only a nominal integer discriminant makes named colormaps
-    compile-time materializable. A lookup copies its selected 1 KiB table once,
-    then performs every requested interpolation against that local table.
+    compile-time materializable. Each batch operation selects and materializes
+    its 1 KiB lookup table once, then reuses it for every interpolation.
     """
 
     var _value: Int
@@ -181,67 +371,132 @@ struct Colormap(Copyable, Equatable, ImplicitlyCopyable, Writable):
         return result^
 
     def map(
-        self, values: Span[Float64, _], lo: Float64, hi: Float64
+        self,
+        values: Span[Float64, _],
+        lo: Float64,
+        hi: Float64,
+        *,
+        missing_color: Optional[RGBA] = None,
     ) raises -> List[RGBA]:
-        """Map values through explicit finite bounds to opaque colors.
+        """Map values through explicit finite bounds to colors.
 
         Raises ``bounds must be finite with lo < hi; got lo=<lo>, hi=<hi>``
-        when either bound is non-finite or ``lo >= hi``. Each normalized value
-        is clamped into ``[0, 1]``; NaN deterministically maps to 0.0, and
-        infinities clamp to their corresponding endpoint. Alpha is 1.0.
+        when either bound is non-finite or ``lo >= hi``, and rejects an infinite
+        ``hi - lo`` normalization width. Each normalized value is clamped into
+        ``[0, 1]`` and infinities reach the corresponding endpoint. A NaN uses
+        ``missing_color``; omitting it preserves the historical low-endpoint
+        color. Normalization exactly matches scalar division, including for tiny
+        finite widths. Non-missing alpha is 1.0.
         """
-        _validate_bounds(lo, hi)
-        var result = List[RGBA](capacity=len(values))
+        var width = _normalization_width(lo, hi)
+        var result = List[RGBA](length=len(values), fill=RGBA.BLACK)
         var table = self._table()
-        var width = hi - lo
-        for value_index in range(len(values)):
-            var coordinate = 0.0
-            if values[value_index] == values[value_index]:
-                coordinate = (values[value_index] - lo) / width
-            coordinate = _clamp_colormap_coordinate(coordinate)
-            result.append(_interpolate_table(table, coordinate))
+        _map_into_normalized(
+            table,
+            values,
+            lo,
+            width,
+            result,
+            missing_color,
+        )
         return result^
+
+    def map_into(
+        self,
+        values: Span[Float64, _],
+        lo: Float64,
+        hi: Float64,
+        results: Span[mut=True, RGBA, _],
+        *,
+        missing_color: Optional[RGBA] = None,
+    ) raises:
+        """Map ``values`` into caller-owned ``results`` without allocating.
+
+        The buffers must have equal length. Bounds must be ordered and finite,
+        and ``hi - lo`` must remain finite. Each normalized value is clamped;
+        infinities reach endpoints. Normalization exactly matches scalar
+        division, including for tiny finite widths. NaN writes ``missing_color``
+        when supplied, otherwise the low endpoint for compatibility with
+        ``map``. The colormap branch and table materialization occur once per
+        call; ``results`` can be reused across calls. Contents are unspecified
+        after an error.
+        """
+        var width = _normalization_width(lo, hi)
+        _validate_result_length(len(values), len(results))
+        var table = self._table()
+        _map_into_normalized(
+            table,
+            values,
+            lo,
+            width,
+            results,
+            missing_color,
+        )
 
     def map_bytes(
-        self, values: Span[Float64, _], lo: Float64, hi: Float64
+        self,
+        values: Span[Float64, _],
+        lo: Float64,
+        hi: Float64,
+        *,
+        missing_color: Optional[RGBA] = None,
     ) raises -> List[SIMD[DType.uint8, 4]]:
-        """Map values directly to strict stored-space opaque RGBA bytes.
+        """Map values directly to strict stored-space RGBA bytes.
 
         Raises ``bounds must be finite with lo < hi; got lo=<lo>, hi=<hi>``
-        when either bound is non-finite or ``lo >= hi``. Each normalized value
-        is clamped into ``[0, 1]``; NaN deterministically maps to 0.0, and
-        infinities clamp to their corresponding endpoint. RGB uses akari's
-        strict normalized-byte quantization and alpha is 255, exactly matching
-        ``map(...)[k].stored_bytes()``. The bytes carry straight,
-        non-premultiplied alpha for raster consumers.
+        when either bound is non-finite or ``lo >= hi``, and rejects an infinite
+        normalization width. Each normalized value is clamped and infinities
+        reach endpoints. NaN writes the strict stored bytes of ``missing_color``;
+        omitting it preserves the historical low endpoint. Other alpha is 255,
+        exactly matching ``map(...)[k].stored_bytes()``. Normalization exactly
+        matches scalar division, including for tiny finite widths. Bytes carry
+        straight, non-premultiplied alpha for raster consumers.
         """
-        _validate_bounds(lo, hi)
-        var result = List[SIMD[DType.uint8, 4]](capacity=len(values))
+        var width = _normalization_width(lo, hi)
+        var result = List[SIMD[DType.uint8, 4]](
+            length=len(values), fill=SIMD[DType.uint8, 4](0, 0, 0, 0)
+        )
         var table = self._table()
-        var width = hi - lo
-        for value_index in range(len(values)):
-            var coordinate = 0.0
-            if values[value_index] == values[value_index]:
-                coordinate = (values[value_index] - lo) / width
-            coordinate = _clamp_colormap_coordinate(coordinate)
-            var position = coordinate * 255.0
-            var table_index = Int(floor(position))
-            var fraction = position - Float64(table_index)
-            var current = table[table_index]
-            if table_index == 255 or fraction == 0.0:
-                result.append(current)
-                continue
-
-            var color = _interpolate_table(table, coordinate)
-            result.append(
-                SIMD[DType.uint8, 4](
-                    _byte_from_normalized(color.red()),
-                    _byte_from_normalized(color.green()),
-                    _byte_from_normalized(color.blue()),
-                    255,
-                )
-            )
+        _map_bytes_into_normalized(
+            table,
+            values,
+            lo,
+            width,
+            result,
+            missing_color,
+        )
         return result^
+
+    def map_bytes_into(
+        self,
+        values: Span[Float64, _],
+        lo: Float64,
+        hi: Float64,
+        results: Span[mut=True, SIMD[DType.uint8, 4], _],
+        *,
+        missing_color: Optional[RGBA] = None,
+    ) raises:
+        """Map directly into caller-owned straight RGBA byte storage.
+
+        The buffers must have equal length. Bounds must be ordered and finite,
+        and ``hi - lo`` must remain finite. NaN writes ``missing_color`` in
+        strict stored-space bytes, or the low endpoint when omitted. The selected
+        table is materialized once and reused across the allocation-free kernel.
+        Normalization exactly matches scalar division, including for tiny finite
+        widths. ``results`` can be reused across calls; contents are unspecified
+        after an error.
+        """
+        var width = _normalization_width(lo, hi)
+        _validate_result_length(len(values), len(results))
+        var table = self._table()
+        _map_bytes_into_normalized(
+            table,
+            values,
+            lo,
+            width,
+            results,
+            missing_color,
+        )
 
     def __eq__(self, other: Self) -> Bool:
         return self._value == other._value

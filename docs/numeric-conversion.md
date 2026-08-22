@@ -1,9 +1,8 @@
 # Numeric conversion policy
 
-This document fixes the numeric contract for future 8-bit component import and
-export. It deliberately defines policy before adding an API. A0.3 is complete
-when this contract is reviewable; no byte constructor or exporter is released by
-this issue.
+This document defines the numeric contract implemented by Akari's 8-bit stored
+component import and export APIs. The contract was fixed before those APIs were
+added and remains normative for their observable results.
 
 ## Scope and color-space meaning
 
@@ -18,14 +17,16 @@ than or equal to exact `r`; this is directed rounding toward positive infinity.
 Hexadecimal values below are exact binary64 encodings, not decimal
 approximations.
 
-`RGBA` is currently transfer-function agnostic. A future raw byte API on this
-type must say `stored` in its name and documentation; it must not imply sRGB.
-The A1.1 sRGB type must define its encoded and linear-light relationship before
-an API may use an `srgb8` name. Converting between encoded sRGB and linear light
-is a separate operation from byte import/export.
+`RGBA` is transfer-function agnostic. Its raw byte APIs say `stored` in their
+names and documentation; they do not imply sRGB. The nominal `Srgb` type defines
+its encoded and linear-light relationship separately. Converting between encoded
+sRGB and linear light is not part of byte import/export.
 
 Alpha uses the same numeric quantization rule but no color transfer function.
-This policy does not choose straight versus premultiplied alpha.
+`RGBA.stored_bytes()` exports straight alpha. `PremultipliedRGBA.stored_bytes()`
+exports explicitly premultiplied numeric RGB and alpha. Conversion between the
+nominal values is separate from quantization and never silently changes a
+transfer function.
 
 ## Import from 8-bit storage
 
@@ -72,7 +73,7 @@ must not replace the strict conversion.
 
 ## Acceptance fixtures
 
-These fixtures are normative for the future implementation:
+These fixtures are normative for the current implementation:
 
 | Normalized input | Exported byte | Reason |
 | ---: | ---: | --- |
@@ -98,7 +99,7 @@ the three exported results correspond to `down / T[n] / up`.
 The `n = 131` row is a required regression fixture: literal binary64 evaluation
 of `floor(x * 255 + 0.5)` incorrectly exports its `down` value as `132`.
 
-The implementation issue must add executable coverage for:
+The executable suite covers:
 
 - all 256 byte values satisfying `export(import(b)) == b`;
 - normalized samples satisfying
@@ -113,6 +114,8 @@ The implementation issue must add executable coverage for:
 
 ## Non-goals
 
-This policy does not add constructors, exporters, sRGB transfer functions,
-linear-light conversion, gamma configuration, HDR encodings, color profiles,
-premultiplication, dithering, or broad color management.
+Stored-byte import/export does not perform sRGB transfer, linear-light
+conversion, gamma configuration, HDR encoding, color-profile conversion,
+dithering, or broad color management. Straight/premultiplied conversion is a
+separately named operation on nominal types; byte quantization never performs it
+implicitly.

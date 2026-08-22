@@ -2,6 +2,7 @@
 
 from std.builtin.comparable import Equatable
 from std.io import Writable, Writer
+from std.math import floor
 from std.memory import bitcast
 
 from .mix_space import MixSpace
@@ -12,6 +13,7 @@ from .rgb_spaces import LinearSrgb, Srgb
 comptime _FLOAT64_FRACTION_MASK = UInt64(0x000F_FFFF_FFFF_FFFF)
 comptime _FLOAT64_EXPONENT_MASK = UInt64(0x7FF)
 comptime _FLOAT64_HIDDEN_BIT = UInt64(0x0010_0000_0000_0000)
+comptime _HALF_STEP_SCALE = 1.0 / 510.0
 comptime _HEX_DIGITS = "0123456789abcdef"
 
 
@@ -73,17 +75,33 @@ def _at_or_above_half_step(value: Float64, index: Int) -> Bool:
     return scaled_significand >= (numerator << UInt64(shift))
 
 
+@always_inline
 def _byte_from_normalized(value: Float64) -> UInt8:
-    """Quantize one trusted normalized component by exact half-step search."""
-    var lower = 0
-    var upper = 255
-    while lower < upper:
-        var middle = lower + (upper - lower) // 2
-        if _at_or_above_half_step(value, middle):
-            lower = middle + 1
-        else:
-            upper = middle
-    return UInt8(lower)
+    """Quantize one trusted normalized component with exact tie correction."""
+    # The floating estimate is at most one byte away from the exact directed
+    # threshold result. Exact comparisons are needed only when its rounded
+    # boundary lands on the wrong side of the real half step.
+    var candidate = Int(floor(value * 255.0 + 0.5))
+    if candidate <= 0:
+        return UInt8(0)
+    if candidate >= 255:
+        return UInt8(255)
+
+    # The rounded reciprocal is below exact 1/510. Multiplying an odd
+    # numerator therefore yields either the directed threshold or its immediate
+    # predecessor; the exact equality comparator selects the right side.
+    var lower_boundary = Float64(2 * candidate - 1) * _HALF_STEP_SCALE
+    if value < lower_boundary or (
+        value == lower_boundary and not _at_or_above_half_step(value, candidate - 1)
+    ):
+        return UInt8(candidate - 1)
+
+    var upper_boundary = Float64(2 * candidate + 1) * _HALF_STEP_SCALE
+    if value > upper_boundary or (
+        value == upper_boundary and _at_or_above_half_step(value, candidate)
+    ):
+        candidate += 1
+    return UInt8(candidate)
 
 
 def _append_hex_byte(mut result: String, byte: UInt8):
@@ -121,7 +139,7 @@ struct _Validated:
 
 
 struct RGBA(Copyable, Equatable, ImplicitlyCopyable, Writable):
-    """Constructor-validated RGBA components in ``[0, 1]``.
+    """Constructor-validated straight-alpha RGBA components in ``[0, 1]``.
 
     Components are stored without an implied transfer function. ``lerp`` operates
     directly in this stored numeric space; later color-space types will make
@@ -280,7 +298,7 @@ struct RGBA(Copyable, Equatable, ImplicitlyCopyable, Writable):
         return Srgb._from_validated(self._red, self._green, self._blue)
 
     def stored_bytes(self) -> SIMD[DType.uint8, 4]:
-        """Export bytes using stored-space quantization and no transfer function.
+        """Export straight-alpha bytes with no implied transfer function.
 
         Export trusts construction-established invariants and does not revalidate
         or clamp. Callers who mutated underscore-prefixed fields directly must call
@@ -292,6 +310,20 @@ struct RGBA(Copyable, Equatable, ImplicitlyCopyable, Writable):
             _byte_from_normalized(self._green),
             _byte_from_normalized(self._blue),
             _byte_from_normalized(self._alpha),
+        )
+
+    def premultiplied(self) -> PremultipliedRGBA:
+        """Multiply stored numeric RGB by alpha explicitly.
+
+        This operation does not apply a transfer function. Code that requires
+        linear-light premultiplication must convert its RGB representation before
+        constructing this transfer-agnostic value.
+        """
+        return PremultipliedRGBA._from_validated(
+            self._red * self._alpha,
+            self._green * self._alpha,
+            self._blue * self._alpha,
+            self._alpha,
         )
 
     def hex(self) -> String:
@@ -412,3 +444,165 @@ def _mix_rgba(a: RGBA, b: RGBA, fraction: Float64, space: MixSpace) -> RGBA:
         mixed_encoded.blue(),
         alpha,
     )
+
+
+def _validate_premultiplied_component(
+    value: Float64, alpha: Float64, name: String
+) raises:
+    if value > alpha:
+        raise Error(
+            name
+            + " must not exceed alpha in premultiplied RGBA; got "
+            + name
+            + "="
+            + String(value)
+            + ", alpha="
+            + String(alpha)
+        )
+
+
+struct PremultipliedRGBA(Copyable, Equatable, ImplicitlyCopyable, Writable):
+    """Constructor-validated premultiplied-alpha numeric RGBA.
+
+    Every component is finite and normalized, and each RGB component is no
+    greater than alpha. The representation is deliberately nominal so a caller
+    cannot accidentally pass premultiplied values where straight ``RGBA`` is
+    expected. Like ``RGBA``, it carries no implied RGB transfer function.
+    """
+
+    var _red: Float64
+    var _green: Float64
+    var _blue: Float64
+    var _alpha: Float64
+
+    def __init__(
+        out self,
+        red: Float64,
+        green: Float64,
+        blue: Float64,
+        alpha: Float64,
+    ) raises:
+        _validate_channel(red, "red")
+        _validate_channel(green, "green")
+        _validate_channel(blue, "blue")
+        _validate_channel(alpha, "alpha")
+        _validate_premultiplied_component(red, alpha, "red")
+        _validate_premultiplied_component(green, alpha, "green")
+        _validate_premultiplied_component(blue, alpha, "blue")
+        self._red = red
+        self._green = green
+        self._blue = blue
+        self._alpha = alpha
+
+    def __init__(
+        out self,
+        red: Float64,
+        green: Float64,
+        blue: Float64,
+        alpha: Float64,
+        *,
+        _validated: _Validated,
+    ):
+        self._red = red
+        self._green = green
+        self._blue = blue
+        self._alpha = alpha
+
+    @staticmethod
+    def from_stored_bytes(
+        red: UInt8, green: UInt8, blue: UInt8, alpha: UInt8
+    ) raises -> Self:
+        """Import premultiplied stored bytes, rejecting RGB above alpha.
+
+        Each byte normalizes as correctly rounded ``value / 255``. No RGB
+        transfer function is applied.
+        """
+        return Self(
+            _normalized_from_byte(red),
+            _normalized_from_byte(green),
+            _normalized_from_byte(blue),
+            _normalized_from_byte(alpha),
+        )
+
+    @staticmethod
+    def _from_validated(
+        red: Float64, green: Float64, blue: Float64, alpha: Float64
+    ) -> Self:
+        return Self(red, green, blue, alpha, _validated=_Validated())
+
+    comptime TRANSPARENT = PremultipliedRGBA(
+        0.0, 0.0, 0.0, 0.0, _validated=_Validated()
+    )
+
+    def validate(self) raises:
+        """Revalidate normalized components and the alpha invariant."""
+        _validate_channel(self._red, "red")
+        _validate_channel(self._green, "green")
+        _validate_channel(self._blue, "blue")
+        _validate_channel(self._alpha, "alpha")
+        _validate_premultiplied_component(self._red, self._alpha, "red")
+        _validate_premultiplied_component(self._green, self._alpha, "green")
+        _validate_premultiplied_component(self._blue, self._alpha, "blue")
+
+    def red(self) -> Float64:
+        return self._red
+
+    def green(self) -> Float64:
+        return self._green
+
+    def blue(self) -> Float64:
+        return self._blue
+
+    def alpha(self) -> Float64:
+        return self._alpha
+
+    def straight(self) -> RGBA:
+        """Return straight alpha, canonicalizing zero alpha to transparent black."""
+        if self._alpha == 0.0:
+            return RGBA.TRANSPARENT
+        return RGBA._from_validated(
+            self._red / self._alpha,
+            self._green / self._alpha,
+            self._blue / self._alpha,
+            self._alpha,
+        )
+
+    def stored_bytes(self) -> SIMD[DType.uint8, 4]:
+        """Export strict premultiplied stored-space bytes.
+
+        Export trusts construction-established invariants, applies the same
+        directed half-step quantization as ``RGBA``, and does not apply an RGB
+        transfer function.
+        """
+        return SIMD[DType.uint8, 4](
+            _byte_from_normalized(self._red),
+            _byte_from_normalized(self._green),
+            _byte_from_normalized(self._blue),
+            _byte_from_normalized(self._alpha),
+        )
+
+    def __eq__(self, other: Self) -> Bool:
+        return (
+            self._red == other._red
+            and self._green == other._green
+            and self._blue == other._blue
+            and self._alpha == other._alpha
+        )
+
+    def __str__(self) -> String:
+        var result = String()
+        self.write_to(result)
+        return result^
+
+    def write_to[W: Writer](self, mut writer: W):
+        writer.write(
+            "PremultipliedRGBA(",
+            self._red,
+            ", ",
+            self._green,
+            ", ",
+            self._blue,
+            ", ",
+            self._alpha,
+            ")",
+        )
