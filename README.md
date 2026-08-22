@@ -17,10 +17,11 @@ from the wider ecosystem.
 
 ## Install
 
-For a Pixi project, add the ecosystem channel and install Akari:
+For a Pixi project, add the ecosystem, Mojo, and Conda Forge channels in
+priority order, then install Akari:
 
 ```sh
-pixi project channel add https://ameyanagi.github.io/mojo-channel
+pixi project channel add --prepend https://ameyanagi.github.io/mojo-channel https://conda.modular.com/max conda-forge
 pixi add mojo-akari
 ```
 
