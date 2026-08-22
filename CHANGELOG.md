@@ -5,6 +5,8 @@ and uses semantic versioning after the first public release.
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-08-22
+
 ### Added
 
 - Initial experimental repository scaffold.
@@ -31,3 +33,6 @@ and uses semantic versioning after the first public release.
   correction for direct batch colormap byte output.
 - Preserve exact scalar-division normalization for finite colormap bounds,
   including tiny widths, and validate bounds before allocating batch outputs.
+
+[Unreleased]: https://github.com/Ameyanagi/akari/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/Ameyanagi/akari/releases/tag/v0.1.0
