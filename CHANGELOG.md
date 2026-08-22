@@ -5,6 +5,14 @@ and uses semantic versioning after the first public release.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-08-22
+
+### Fixed
+
+- Require exactly Mojo compiler 1.0.0 in emitted Conda package metadata and
+  validate that runtime constraint after every package build.
+- Document all channels required for a clean Pixi installation.
+
 ## [0.1.0] - 2026-08-22
 
 ### Added
@@ -34,5 +42,6 @@ and uses semantic versioning after the first public release.
 - Preserve exact scalar-division normalization for finite colormap bounds,
   including tiny widths, and validate bounds before allocating batch outputs.
 
-[Unreleased]: https://github.com/Ameyanagi/akari/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Ameyanagi/akari/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/Ameyanagi/akari/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Ameyanagi/akari/releases/tag/v0.1.0
