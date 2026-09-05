@@ -19,8 +19,14 @@ documentation land together.
   byte, adjacent-value fixtures, and transfer-function boundaries in
   `docs/numeric-conversion.md`; no constructor/exporter is added by this gate.
 
-Completion gate: the root exports only `RGBA`; `pixi run check` and the installed
-package smoke test exercise that public symbol.
+Current public-surface gate: [the package root](../src/akari/__init__.mojo)
+exports `RGBA`, `PremultipliedRGBA`, `Srgb`, `LinearSrgb`, `Hsl`, `Hsv`, `Oklab`,
+`MixSpace`, `Gradient`, `Palette`, and `Colormap`. Internal tables and helpers
+stay out of the root. `pixi run check` exercises their numeric and behavioral
+contracts; the [installed-package smoke test](../conda.recipe/test_package.mojo)
+checks representative RGBA, alpha, palette, gradient, and colormap operations.
+The broader A4 release gates below remain separate from A0's implemented numeric
+foundation.
 
 ### A1 — Explicit RGB-family spaces
 
@@ -38,25 +44,42 @@ external color library or generated table is introduced.
 
 ### A2 — Palettes and interpolation
 
-- [ ] **A2.1 Interpolation policy:** make stored-space, linear-light, and later
-  perceptual interpolation distinguishable at the type or function boundary.
-- [ ] **A2.2 Gradient sampling:** implement deterministic endpoint-inclusive
-  sampling with explicit behavior for zero and one requested samples.
-- [ ] **A2.3 Palette values:** define immutable categorical and sequential
-  palette containers without renderer or plotting concepts.
-- [ ] **A2.4 Palette validation:** reject empty required palettes and test stable
-  ordering, indexing boundaries, and interpolation fixtures.
+- [x] **A2.1 Interpolation policy:** `MixSpace.STORED`, `LINEAR`, and `OKLAB`
+  make interpolation explicit; [mix-space tests](../tests/test_mix_space.mojo)
+  and [gradient tests](../tests/test_gradient.mojo) pin endpoints, alpha, and
+  color-space semantics.
+- [x] **A2.2 Gradient sampling:** deterministic endpoint-inclusive `sample`
+  and `colors` behavior, including zero/one counts, is covered by
+  [gradient tests](../tests/test_gradient.mojo). Caller-owned batch output is
+  additionally covered by [batch tests](../tests/test_gradient_batch.mojo).
+- [x] **A2.3 Palette values:** owned `Palette` values expose read-only public
+  operations without renderer or plotting concepts; [palette tests](../tests/test_palette.mojo)
+  cover construction, curated factories, and ordering. Sequential color lists
+  come from `Gradient.colors` and `Colormap.colors`, covered by
+  [gradient](../tests/test_gradient.mojo) and [colormap](../tests/test_colormap.mojo)
+  tests. Underscore storage remains private by convention.
+- [x] **A2.4 Palette validation:** constructor rejection, index boundaries,
+  stable ordering, and cycling are covered by [palette tests](../tests/test_palette.mojo);
+  [gradient tests](../tests/test_gradient.mojo) cover interpolation fixtures. Curated color sources are recorded
+  in [data provenance](data-provenance.md#hand-curated-categorical-palettes).
 
 Dependency gate: palette APIs require A1's explicit color-space semantics.
 
 ### A3 — Scientific colormaps
 
-- [ ] **A3.1 Data provenance:** select permissively licensed sources, record
-  upstream versions/checksums, and define a deterministic generation command.
-- [ ] **A3.2 Initial maps:** add viridis, plasma, inferno, and magma as sampled
-  sequential colormaps with endpoint and checksum fixtures.
-- [ ] **A3.3 Sampling contract:** test clamped versus rejected coordinates and
-  document the chosen behavior before exporting convenience functions.
+- [x] **A3.1 Data provenance:** the [generation ledger](data-provenance.md)
+  records exact upstream versions, licenses, per-map/raw-data and generated-file
+  SHA-256 values, and the deterministic
+  [generation command](../scripts/generate_colormaps.py).
+- [x] **A3.2 Initial maps:** viridis, plasma, inferno, and magma are implemented,
+  alongside turbo, cividis, red-blue, and spectral. [Colormap tests](../tests/test_colormap.mojo)
+  pin endpoint and midpoint fixtures; raw table and generated-file SHA-256
+  values are recorded in [data provenance](data-provenance.md). Those checksums
+  are provenance records, not an automated regeneration gate in the Mojo suite.
+- [x] **A3.3 Sampling contract:** [colormap tests](../tests/test_colormap.mojo)
+  cover clamping, NaN, count/index errors, normalized batch bounds, and scalar
+  parity. [Design](design.md#batch-colormap-mapping) documents missing values and
+  exact scalar normalization.
 
 Dependency gate: generated tables land only after A2's palette and sampling
 contracts are stable and the provenance review is complete.
@@ -67,6 +90,9 @@ contracts are stable and the provenance review is complete.
   implementation type reachable from it.
 - [ ] **A4.2 Downstream proof:** validate one pinned Sen integration and one
   pinned Kagerou integration without adding either as an Akari dependency.
+  [Issue #11](https://github.com/Ameyanagi/akari/issues/11) specifies immutable
+  versions, artifacts/numeric assertions, alpha/transfer boundaries, and the
+  evidence needed to close this gate. Akari's own examples do not close it.
 - [ ] **A4.3 Package matrix:** build and smoke-test `.mojoc` packages on every
   declared CI platform and document numerical tolerances.
 
