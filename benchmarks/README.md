@@ -37,3 +37,17 @@ changing production inlining.
 Results are development evidence, not permanent marketing claims. Keep benchmark
 output with performance-sensitive review notes rather than committing machine-
 specific numbers here.
+
+## Gradient sampling
+
+Run `pixi run bench-gradient` to compare the existing allocating `colors(n)`
+with caller-owned `colors_into(output)`. Both sample the same five stops with
+varying alpha in STORED, LINEAR, and OKLAB modes at 16 and 65,536 colors. Each
+measurement covers 131,072 colors, with two warmups and eleven measurement
+pairs whose execution order alternates. Output buffers are prepared before
+timing; complete results are checked against scalar `at()` and allocating
+`colors()` before each size, and per-pair checksums must match. Results report
+p50/p95 nanoseconds per color. The wrapper records compiler, host, source hashes,
+and command so measured code can be recovered even during a dirty checkout.
+
+See [the recorded run](gradient-results.md) for local measurements and limits.

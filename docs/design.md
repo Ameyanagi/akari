@@ -37,6 +37,24 @@ rounding, range, mutation, and color-space boundary in [the numeric conversion
 policy](numeric-conversion.md). Quantization never implies a transfer function,
 and clamping is never hidden inside a strict conversion.
 
+## Batch gradient sampling
+
+These batch APIs are unreleased and currently require the source-checkout
+`pixi run --locked mojo run -I src your_file.mojo` path.
+
+`Gradient.map_into(coordinates, results)` validates equal span lengths once,
+then fills the caller's output using the exact scalar `at()` contract. A length
+error occurs before any output write. `colors_into(results)` derives its sample
+count from the output span, so it is non-raising: empty output is a no-op and a
+single element receives the first stop. Neither method allocates or resizes
+storage. `colors(n)` retains its allocating convenience contract.
+
+The batch operations preserve the same segment division, exact stops, NaN and
+infinity clamping, color-space transforms, and stored-space alpha interpolation
+as scalar sampling. No reciprocal rewrite or alternative SIMD approximation is
+introduced. Differential tests cover every short length, all interpolation
+spaces, reusable subspans, endpoints, and invalid output sizes.
+
 ## Batch colormap mapping
 
 `Colormap.map_into` and `Colormap.map_bytes_into` are the allocation-free batch

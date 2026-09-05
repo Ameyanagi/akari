@@ -69,6 +69,36 @@ Colors also support space-aware mixing such as `a.mix(b, 0.5, MixSpace.OKLAB)`,
 `lighten`/`darken`/`saturate`/`desaturate`/`shift_hue`, and `to_srgb()`/`to_rgba()`
 bridging into the conversion graph.
 
+The following buffer-reuse APIs are **unreleased** and require this source
+checkout; the published `mojo-akari` 0.1.1 package does not include them. Save
+the example as `your_file.mojo` in the checkout and run
+`pixi run --locked mojo run -I src your_file.mojo`.
+
+Repeated gradient sampling can reuse caller-owned output without allocating:
+
+```mojo
+from akari import Gradient, MixSpace, RGBA
+from std.collections import List
+
+
+def main() raises:
+    var stops: List[RGBA] = [RGBA.TRANSPARENT, RGBA.WHITE]
+    var gradient = Gradient(stops^, MixSpace.LINEAR)
+    var coordinates: List[Float64] = [0.0, 0.25, 1.0]
+    var output = List[RGBA](length=3, fill=RGBA.BLACK)
+    gradient.map_into(coordinates, output)
+    print(output[1])
+    gradient.colors_into(output)  # Reuse for positions 0.0, 0.5, and 1.0.
+    print(output[1])
+```
+
+`map_into` requires equally sized input/output spans and raises before writing
+on a length mismatch. `colors_into` uses the output length, permits empty output,
+and maps one element to the first stop. Both match scalar `at()` exactly,
+including endpoint/NaN clamping and alpha in every `MixSpace`. The allocating
+`colors(n)` convenience remains available. Run `pixi run bench-gradient` for a
+paired comparison at small and large sizes.
+
 For the interpolation choice, see the `MixSpace` docstring: `STORED` for data
 fidelity, `LINEAR` for physical light, and `OKLAB` for looks. Curated palettes
 are factories because Mojo 1.0 cannot make their `List`-backed values

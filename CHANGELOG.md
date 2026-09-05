@@ -5,6 +5,19 @@ and uses semantic versioning after the first public release.
 
 ## [Unreleased]
 
+### Added
+
+- Allocation-free `Gradient.map_into` and `Gradient.colors_into` sampling over
+  caller-owned output spans, with exact scalar behavior in every `MixSpace`.
+- A paired `bench-gradient` benchmark comparing allocating and reused sampling
+  at 16 and 65,536 colors with complete scalar parity checks.
+
+### Fixed
+
+- Reconciled implemented A2/A3 roadmap gates with their tests and provenance,
+  documented the current root exports, and tracked unfinished pinned downstream
+  integration separately in issue #11.
+
 ## [0.1.1] - 2026-08-22
 
 ### Fixed
