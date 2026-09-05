@@ -100,6 +100,45 @@ struct Gradient(Copyable, Equatable, Writable):
             return self.at(0.0)
         return self.at(Float64(i) / Float64(n - 1))
 
+    def map_into(
+        self,
+        coordinates: Span[Float64, _],
+        results: Span[mut=True, RGBA, _],
+    ) raises:
+        """Sample coordinates into equally sized caller-owned output.
+
+        Each result is exactly ``at(coordinates[i])``, including NaN clamping,
+        exact stops, and the chosen color/alpha interpolation semantics. Empty
+        spans are valid. A length mismatch raises before writing any output.
+        This operation allocates no storage and never resizes either buffer.
+        """
+        if len(results) != len(coordinates):
+            raise Error(
+                String(
+                    "gradient results length must equal coordinates length ",
+                    len(coordinates),
+                    "; got ",
+                    len(results),
+                    "; resize results to the coordinate count",
+                )
+            )
+        for index in range(len(coordinates)):
+            results[index] = self.at(coordinates[index])
+
+    def colors_into(self, results: Span[mut=True, RGBA, _]):
+        """Fill existing output with endpoint-inclusive evenly spaced colors.
+
+        The output length determines the sample count. Empty output is a no-op;
+        one element receives exactly ``at(0.0)``. This non-raising operation
+        allocates no storage and is equivalent to ``colors(len(results))``.
+        """
+        var count = len(results)
+        if count == 1:
+            results[0] = self.at(0.0)
+            return
+        for index in range(count):
+            results[index] = self.at(Float64(index) / Float64(count - 1))
+
     def colors(self, n: Int) -> List[RGBA]:
         """Return evenly spaced endpoint-inclusive colors.
 

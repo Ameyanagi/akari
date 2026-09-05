@@ -6,6 +6,7 @@ platforms = ["osx-arm64", "linux-64", "linux-aarch64"]
 version = "0.1.1"
 
 [tasks]
+bench-gradient = { cmd = "bash scripts/benchmark-gradient.sh", description = "Compare allocating and reused gradient sampling" }
 bench-colormap = { cmd = "bash scripts/benchmark-colormap.sh", description = "Benchmark allocation-free colormap mapping" }
 check = { depends-on = ["format-check", "test", "readme-check", "precompile"], description = "Run the complete validation suite" }
 example = { cmd = "mojo run -I src examples/basic.mojo", description = "Run the structural smoke example" }

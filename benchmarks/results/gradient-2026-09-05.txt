@@ -1,0 +1,25 @@
+✨ Pixi task (bench-gradient): bash scripts/benchmark-gradient.sh: (Compare allocating and reused gradient sampling)
+metadata_schema=akari-gradient-benchmark-metadata-v1
+run_utc=2026-09-05T09:25:33Z
+git_head=2027ae513311ccc66d73db415dca67dde6c016d5
+benchmark_source_git_blob=6f9c29b6021406a5b2f551293bef85569c694f6a
+gradient_source_git_blob=40c2c9d1bc13ec6d6b58ab0540db985fffcb399c
+cpu=Apple M4
+os=Darwin 25.5.0 Darwin Kernel Version 25.5.0: Mon Apr 27 20:41:26 PDT 2026; root:xnu-12377.121.6~2/RELEASE_ARM64_T8132
+architecture=arm64
+mojo=Mojo 1.0.0 (ed45d567)
+compiler_options=--optimization-level 3 -I src
+command=pixi run bench-gradient
+schema=akari-gradient-benchmark-v1 warmups=2 measurements=11 order=alternating_pairs
+space=stored variant=colors_allocating count=16 iterations=8192 p50_ns_per_color=41.19110107421875 p95_ns_per_color=95.90911865234375 checksum=124654.93333332913
+space=stored variant=colors_into_reused count=16 iterations=8192 p50_ns_per_color=18.74542236328125 p95_ns_per_color=52.7496337890625 checksum=124654.93333332913
+space=linear variant=colors_allocating count=16 iterations=8192 p50_ns_per_color=317.56591796875 p95_ns_per_color=382.781982421875 checksum=133408.07308182184
+space=linear variant=colors_into_reused count=16 iterations=8192 p50_ns_per_color=303.68804931640625 p95_ns_per_color=365.11993408203125 checksum=133408.07308182184
+space=oklab variant=colors_allocating count=16 iterations=8192 p50_ns_per_color=414.48974609375 p95_ns_per_color=496.69647216796875 checksum=131161.92990905652
+space=oklab variant=colors_into_reused count=16 iterations=8192 p50_ns_per_color=394.92034912109375 p95_ns_per_color=491.43218994140625 checksum=131161.92990905652
+space=stored variant=colors_allocating count=65536 iterations=2 p50_ns_per_color=13.55743408203125 p95_ns_per_color=21.54541015625 checksum=6.607418936446175
+space=stored variant=colors_into_reused count=65536 iterations=2 p50_ns_per_color=12.62664794921875 p95_ns_per_color=16.5252685546875 checksum=6.607418936446175
+space=linear variant=colors_allocating count=65536 iterations=2 p50_ns_per_color=385.09368896484375 p95_ns_per_color=509.6893310546875 checksum=6.6344846283689405
+space=linear variant=colors_into_reused count=65536 iterations=2 p50_ns_per_color=319.9462890625 p95_ns_per_color=484.51995849609375 checksum=6.6344846283689405
+space=oklab variant=colors_allocating count=65536 iterations=2 p50_ns_per_color=552.3834228515625 p95_ns_per_color=2592.5521850585938 checksum=6.6169978995652805
+space=oklab variant=colors_into_reused count=65536 iterations=2 p50_ns_per_color=525.9246826171875 p95_ns_per_color=905.8151245117188 checksum=6.6169978995652805
