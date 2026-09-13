@@ -88,11 +88,13 @@ contracts are stable and the provenance review is complete.
 
 - [ ] **A4.1 Public API audit:** document every root export and remove any
   implementation type reachable from it.
-- [ ] **A4.2 Downstream proof:** validate one pinned Sen integration and one
+- [x] **A4.2 Downstream proof:** validate one pinned Sen integration and one
   pinned Kagerou integration without adding either as an Akari dependency.
-  [Issue #11](https://github.com/Ameyanagi/akari/issues/11) specifies immutable
-  versions, artifacts/numeric assertions, alpha/transfer boundaries, and the
-  evidence needed to close this gate. Akari's own examples do not close it.
+  The [downstream proof](downstream-proof.md) records immutable revisions,
+  reproduced Sen SVG colors, Kagerou raster pixels, alpha/transfer boundaries,
+  and exact commands for [issue #11](https://github.com/Ameyanagi/akari/issues/11).
+  `pixi run --locked check-downstream` verifies both the pinned Akari baseline
+  and the current checkout; CI retains reports and artifacts on all three platforms.
 - [ ] **A4.3 Package matrix:** build and smoke-test `.mojoc` packages on every
   declared CI platform and document numerical tolerances.
 
