@@ -32,6 +32,32 @@ jobs:
       - name: Verify locked workspace
         run: pixi run --locked check
 
+  downstream:
+    name: Downstream ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-24.04-arm, macos-14]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: prefix-dev/setup-pixi@f00437f565399d418b0acc85936d12c1fb668347 # v0.10.1
+        with:
+          pixi-version: v0.76.2
+          cache: true
+      - name: Verify pinned consumer contracts
+        run: pixi run --locked check-downstream
+      - name: Preserve reproducible proof
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: downstream-proof-${{ matrix.os }}
+          include-hidden-files: true
+          if-no-files-found: error
+          path: |
+            .pixi/downstream-proof/report.json
+            .pixi/downstream-proof/*/sen.svg
+            .pixi/downstream-proof/*/*.log
+
   package:
     name: Package Linux x86-64
     runs-on: ubuntu-24.04

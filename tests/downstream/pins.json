@@ -1,0 +1,17 @@
+{
+  "mojo": "Mojo 1.0.0 (ed45d567)",
+  "repositories": {
+    "akari": {
+      "url": "https://github.com/Ameyanagi/akari.git",
+      "revision": "28e58cbdb3d22bf4d919d5402fcea77b69f112a9"
+    },
+    "sen": {
+      "url": "https://github.com/Ameyanagi/sen.git",
+      "revision": "8494b4f98f4d359f25129a2b3af6899062e71717"
+    },
+    "kagerou": {
+      "url": "https://github.com/Ameyanagi/kagerou.git",
+      "revision": "81a394882a3b01dda46eb3a4c329b4665dce8b13"
+    }
+  }
+}
